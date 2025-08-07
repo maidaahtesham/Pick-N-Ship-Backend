@@ -1,49 +1,46 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Customer } from './customer.entity'; // Assuming Customer entity exists
-import { courier_company } from './courier_company.entity'; // Assuming CourierCompany entity exists
-import { Rider } from './rider.entity'; // Assuming Rider entity exists
+
+// src/Models/shipment_request.entity.ts
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToOne, JoinColumn } from 'typeorm';
+import { courier_company } from './courier_company.entity';
+import { Customer } from './customer.entity';
+import { Rider } from './rider.entity';
+import { Shipment } from './shipment.entity';
 
 @Entity()
 export class shipment_request {
   @PrimaryGeneratedColumn()
   request_id: number;
 
-  @ManyToOne(() => Customer, (customer) => customer.shipment_request)
-  @JoinColumn({ name: 'customer_id' })
-  customer: Customer;
-
-  @ManyToOne(() => courier_company, (company) => company.shipment_request)
-  @JoinColumn({ name: 'company_id' })
-  company: courier_company;
-
-  @Column({ length: 255 })
+@Column({ type: 'varchar', length: 255, nullable: true }) // Allow null initially
   pickup_location: string;
 
-  @Column({ length: 255 })
+@Column({ type: 'varchar', length: 255, nullable: true }) // Allow null initially
   dropoff_location: string;
 
-  @Column({
-    type: 'enum',
-    enum: ['regular', 'bulk', 'large'],
+  @Column({type:'enum', enum:['regular', 'bulk', 'contract'], nullable:true
+
   })
   parcel_type: string;
 
   @Column({
     type: 'enum',
-    enum: ['small', 'medium', 'large'],
+    enum: ['small', 'medium', 'large'], nullable:true
   })
   package_size: string;
 
-  @Column({ type: 'float' })
+  @Column({type:'float'})
   weight: number;
 
-  @Column({ type: 'float' })
+  @Column({type:'float'})
   length: number;
 
-  @Column({ type: 'float' })
+  @Column({type:'float'})
   height: number;
 
-  @Column({ type: 'float' })
+  @Column({ type: 'float', nullable: true }) // Custom width
+  width: number;
+
+  @Column({type:'float'})
   base_price: number;
 
   @Column({
@@ -51,18 +48,14 @@ export class shipment_request {
     enum: ['pending', 'accepted', 'declined'],
     default: 'pending',
   })
-  status: string;
+  shipment_status: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'timestamp' })
   request_date: Date;
 
-  @Column({ length: 50 })
+  @Column({length:50, nullable:true})
   pickup_time_slot: string;
 
-@ManyToOne(() => Rider, (rider) => rider.shipmentRequests) // Inverse side of the relationship
-  @JoinColumn({ name: 'assigned_rider_id' })
-  rider: Rider;
-  
   @Column({
     type: 'enum',
     enum: ['paid', 'unpaid'],
@@ -70,15 +63,48 @@ export class shipment_request {
   })
   payment_status: string;
 
-  @Column({ length: 100 })
+  @Column()
   sender_name: string;
 
-  @Column({ length: 100 })
+  @Column()
   receiver_name: string;
 
-  @Column({ length: 20 })
+  @Column()
   receiver_phone: string;
 
   @Column({ type: 'text', nullable: true })
   special_instruction: string;
+
+@Column({ type: 'text', array: true, nullable: true, default: () => 'ARRAY[]::text[]' })
+parcel_photos: string[];
+
+  @Column()
+  createdBy: string;
+
+  @Column()
+  updatedBy: string;
+
+  @Column({ type: 'timestamp' , default: () => 'CURRENT_TIMESTAMP' })
+  createdOn: Date;
+
+  @Column({ type: 'timestamp' , default: () => 'CURRENT_TIMESTAMP'})
+  updatedOn: Date;
+
+  @Column({ type: 'boolean', default: null })
+  status: boolean;
+
+@ManyToOne(() => Customer, (customer) => customer.shipment_request) // Add inverse side if needed
+@JoinColumn({ name: 'customer_id' })
+customer: Customer;
+
+@ManyToOne(() => Rider)
+  @JoinColumn({ name: 'rider_id' }) // Ensure this matches the DB column name
+  rider: Rider;
+
+  @OneToOne(() => Shipment, (shipment) => shipment.shipment_request) // Non-owning side
+  shipment: Shipment;
+
+  @ManyToOne(() => courier_company)
+  @JoinColumn({ name: 'company_id' }) // Ensure this matches the DB column name
+  company: courier_company;
 }

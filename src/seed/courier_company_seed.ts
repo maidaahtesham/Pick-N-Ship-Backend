@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../app.module';
 import { DataSource } from 'typeorm';
 import { courier_company } from '../Models/courier_company.entity';
-
+import { AppModule } from 'src/app.module';
+//import { AppModule } from 'src/app.module';
 
 async function courier_company_seed() {
   const app = await NestFactory.createApplicationContext(AppModule);

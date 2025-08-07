@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards } from '@nestjs/common';
 import { AdminPortalService } from './admin-portal.service';
-import { courier_company_dto } from 'src/ViewModel/courier_company_dto';
 import { edit_courier_company_dto } from 'src/ViewModel/edit_courier_company.dto';
 import { Response } from 'src/ViewModel/response';
 import { super_admin } from 'src/Models/super_admin.entity';
+import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 
-
+@UseGuards(JwtAuthGuard)
 @Controller('api/admin-portal')
 export class AdminPortalController {
   constructor(private readonly adminPortalService: AdminPortalService) {}
@@ -23,11 +23,18 @@ export class AdminPortalController {
     return await this.adminPortalService.getallCompaniesdetails();
   }
 
-  @Get('get-company')
-  @HttpCode(200)
-  async getCompany(@Query('companyId') companyId: number): Promise<Response> {
-    return await this.adminPortalService.getCompany(companyId);
-  }
+  // @Get('get-company')
+  // @HttpCode(200)
+  // async getCompany(@Query('companyId') companyId: number): Promise<Response> {
+  //   return await this.adminPortalService.getCompany(companyId);
+  // }
+
+  @Post('get-company')
+@HttpCode(200)
+async getCompany(@Body() body: { companyId: number }): Promise<Response> {
+  return await this.adminPortalService.getCompany(body.companyId);
+}
+
 
   @Post('edit-company')
   @HttpCode(200)
@@ -66,6 +73,58 @@ updateCompanyStatus(@Body() data: { company_id: number; status: 'accepted' | 'de
     return this.adminPortalService.getAllJobs({ page, limit, status, search });
   }
 
+
+  //   @Get(':id/overview')
+  // async getShipmentOverview(@Param('id') id: number) {
+  //   const overview = await this.adminPortalService.getShipmentOverview(id);
+  //   if (!overview) {
+  //     throw new NotFoundException('Shipment not found');
+  //   }
+  //   return overview;
+  // }
+
+  @Post('overview')
+async getShipmentOverview(@Body('id') id: number) {
+  const overview = await this.adminPortalService.getShipmentOverview(id);
+  if (!overview) {
+    throw new NotFoundException('Shipment not found');
+  }
+  return overview;
+}
+
+
+// @Get('cod')
+//   async getAll(
+//     @Query('page') page: number = 1,
+//     @Query('limit') limit: number = 10,
+//     @Query('company') company?: string,
+//   ) {
+//     return this.adminPortalService.getCodShipments(+page, +limit, company);
+//   }
+
+@Post('cod')
+async getAll(@Body() body: { page?: number; limit?: number; company?: string }) {
+  const page = body.page ? +body.page : 1;
+  const limit = body.limit ? +body.limit : 10;
+  const company = body.company;
+  return this.adminPortalService.getCodShipments(page, limit, company);
+}
+
+
+
+  // Get total COD summary (Receivable, Pending, Retrieved)
+  @Get('summary')
+  async getSummary() {
+    return this.adminPortalService.getCodSummary();
+  }
+
+  // Mark a specific shipment as Paid
+  @Post(':shipmentId/pay')
+  @HttpCode(HttpStatus.OK)
+  async markAsPaid(@Param('shipmentId') shipmentId: string) {
+    await this.adminPortalService.markAsPaid(shipmentId);
+    return { message: 'Shipment marked as paid' };
+  }
 
 
 

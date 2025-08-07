@@ -1,8 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne } from 'typeorm';
 import { Rating } from './ratings.entity';
 import { shipment_request } from './shipment_request.entity';
 import { text } from 'stream/consumers';
 import { Shipment } from './shipment.entity';
+import { CodPayment } from './cod_payment.entity';
+import { company_document } from './company_document.entity';
+import { shipping_detail } from './shipping_detail.entity';
+import { vendor_user } from './vendor_user.entity';
+import { Customer } from './customer.entity';
+
 
 @Entity()
 export class courier_company {
@@ -12,91 +18,24 @@ export class courier_company {
   @Column({ length: 100 })
   company_name: string;
 
+    @Column({ length: 50 })
+  username: string;
+
   @Column({ length: 255, nullable: true })
   logo: string;
 
   @Column({ length: 50 })
   city: string;
-
-  @Column({ length: 20 })
-  contact_phone: string;
+  
+  @Column({length:100, nullable:true})
+  company_address:string;
 
     @Column({ length: 20, nullable: true })
   company_phone_number: string;
 
-  @Column({ length: 20 })
-  pns_account: string;
-
-  @Column({ length: 50, nullable: true })
-  trade_license_number: string;
-
-  @Column({ type: 'date', nullable: true })
-  trade_license_expiry_date: string;
-
-  @Column({ length: 255, nullable: true })
-  trade_license_document_path: string;
-
-  @Column({ length: 255, nullable: true })
-  company_document_path: string;
-
-  @Column({ length: 255, nullable: true })
-  establishment_card: string;
-
-  @Column({ type: 'date' })
-  establishment_date: string;
-
-  @Column({ length: 255, nullable: true })
-  establishment_details: string;
-
-  @Column({
-    type: 'enum',
-    enum: ['active', 'pending', 'declined'],
-    default: 'pending',
-  })
   @Column({ length: 20, nullable: true })
-  registration_status: string;
+  pns_account_full_name: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  registration_date: Date;
-
-  @Column({
-    type: 'enum',
-    enum: ['bike', 'van', 'truck'],
-  })
-  conveyance_types: string;
-
-  @Column({ type: 'text' })
-  conveyance_details: string;
-
-  @Column({
-    type: 'enum',
-    enum: ['standard', '10%', '5%', 'custom'],
-  })
-  commission_rate: string;
-
-  @Column({ length: 50 })
-  first_name: string;
-
-  @Column({ length: 50 })
-  last_name: string;
-
-  @Column({ length: 100 })
-  email_address: string;
-
-  @Column({ length: 255 })
-  password: string;
-
-  @Column({ length: 100 })
-  address_line1: string;
-
-  @Column({ length: 100, nullable: true })
-  address_line2: string;
-
-  @Column({ length: 20 })
-  postal_code: string;
-
-  @Column({ length: 50 })
-  country: string;
 
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
@@ -124,4 +63,22 @@ rejection_reason: string;
     @OneToMany(() => Shipment, (shipment) => shipment.courierCompany)
     shipments: Shipment[];
 
+    @OneToMany(()=> CodPayment, (codPayment) => codPayment.courierCompany)
+    codPayments: CodPayment[];
+
+    @OneToMany(() => company_document, (document) => document.company)
+  company_document: company_document[];
+
+  @OneToMany(() => shipping_detail, (shipping) => shipping.company)
+  shippingDetails: shipping_detail[];
+
+  @OneToMany(()=> vendor_user,(vendor_user) => vendor_user.company)
+  vendorUser: vendor_user[];
+
+
+  @OneToMany(()=> Customer,(Customer)=> Customer.company , { nullable: true })
+customer: Customer[];
+
+
 }
+

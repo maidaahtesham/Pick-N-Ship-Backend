@@ -38,4 +38,22 @@ export class Rating {
 
   @CreateDateColumn()
   created_at: Date;
+
+
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
+createdOn: Date;
+
+@Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
+updatedOn: Date;
+
+  @Column({length:50, nullable: true})
+  createdBy: string;
+
+  @Column({length:50, nullable: true})
+  updatedBy: string;
+
+@Column({ type: 'boolean', default: null })
+status: boolean;
+
 }
