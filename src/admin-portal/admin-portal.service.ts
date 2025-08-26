@@ -38,11 +38,14 @@ private dataSource: DataSource,
   private shipmentDetailsRepository: Repository<shipping_detail>
 
 ) {}
+
+
+
 async hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10); // Generate salt with 10 rounds
     return bcrypt.hash(password, salt); // Hash the password
   }
-/*CREATE SUPER ADMIN */
+
   async createSuperAdmin(data: Partial<super_admin>): Promise<Response> {
   const resp: Response = {
     success: false,
@@ -67,19 +70,14 @@ async hashPassword(password: string): Promise<string> {
     }
 
     if (admin) {
-      // Update existing record
         if (data.password) {
-          // Hash the password if provided
           data.password = await this.hashPassword(data.password);
         }
 
-      // Update existing record
       admin = this.superAdminRepository.merge(admin, data);
       await this.superAdminRepository.save(admin);
       resp.message = 'Super admin updated successfully';
     } else {
-      // Insert new record
-         // Hash the password for new admin
         data.password = await this.hashPassword(data.password);
       admin = this.superAdminRepository.create(data);
       await this.superAdminRepository.save(admin);
@@ -116,132 +114,105 @@ async hashPassword(password: string): Promise<string> {
     return result;
   }
  
-async getallCompaniesdetails(): Promise<Response> {
-    const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
-    try {
-    const companies = await this.companyRepository
+ 
+async getallCompaniesdetails(body: any): Promise<Response> {
+  const { search, status, sortBy, sortOrder, page = 1, limit = 10 } = body;
+
+  const resp: Response = {
+    success: false,
+    message: '',
+    result: null,
+    httpResponseCode: null,
+    customResponseCode: '',
+    count: 0,
+  };
+
+  try {
+    // Map frontend sortBy to database column names
+    const sortByMap: { [key: string]: string } = {
+      registeration_date: 'company.registeration_date',
+      submission_date: 'company.registeration_date', // Handle frontend's submission_date
+      company_name: 'company.company_name',
+      status: 'company.registeration_status',
+    };
+    const mappedSortBy = sortByMap[sortBy] || 'company.registeration_date'; // Default to registeration_date
+
+    const query = this.companyRepository
       .createQueryBuilder('company')
-      .leftJoinAndSelect('company.ratings', 'ratings')
-      .where('company.status = :status', { status: true })
+      .leftJoin('company.ratings', 'rating')
       .select([
         'company.company_id AS company_id',
         'company.company_name AS company_name',
-        'company.contact_phone AS contact_phone',
-        'company.email_address AS email_address',
-        'company.registration_date AS registration_date',
-        'company.registration_status AS status',
-        'company.registration_date AS submission_date',
-        `AVG(
-      (
-        CAST(ratings.rider_behavior_score AS FLOAT) +
-        CAST(ratings.on_time_delivery_score AS FLOAT) +
-        CAST(ratings.affordability_score AS FLOAT)
-      ) / 3
-    ) AS average_rating`
+        'company.company_phone_number AS contact_phone',
+        'company.company_email_address AS email_address',
+        'company.registeration_date AS submission_date',
+        'company.registeration_status AS status',
       ])
-        .groupBy('company.company_id')
-      .getRawMany();
-    
-      if (companies.length > 0) {
-        resp.success = true;
-        resp.httpResponseCode = 200;
-        resp.customResponseCode = '200 OK';
-        resp.message = 'Get Companies';
-        resp.result = companies;
-        resp.count = companies.length;
-        return resp;
-      }
-      resp.success = false;
-      resp.message = 'No records exist';
-      return resp;
-    } catch (ex) {
-      resp.success = false;
-      resp.httpResponseCode = 400;
-      resp.customResponseCode = '400 BadRequest';
-      resp.message = `Failed to Get Companies : ${ex.message}`;
-      resp.result = null;
-      return resp;
+      .addSelect('AVG(rating.stars)', 'average_rating')
+      .groupBy('company.company_id');
+
+    // Status filter (optional)
+    if (status && status !== 'All') {
+      query.andWhere('company.registeration_status = :status', { status });
     }
+
+    // Search filter
+    if (search) {
+      query.andWhere(
+        '(LOWER(company.company_name) LIKE LOWER(:search) OR LOWER(company.company_email_address) LIKE LOWER(:search))',
+        { search: `%${search}%` },
+      );
+    }
+
+    // Sorting
+    if (sortBy) {
+      query.orderBy(mappedSortBy, sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC');
+    } else {
+      query.orderBy('company.registeration_date', 'DESC'); // Default sort
+    }
+
+    // Pagination
+    query.skip((page - 1) * limit).take(limit);
+
+    // Get raw results (includes aliases like submission_date)
+    const companies = await query.getRawMany();
+
+    // Get total count for pagination
+    const totalCountQuery = this.companyRepository.createQueryBuilder('company');
+    if (status && status !== 'All') {
+      totalCountQuery.andWhere('company.registeration_status = :status', { status });
+    }
+    if (search) {
+      totalCountQuery.andWhere(
+        '(LOWER(company.company_name) LIKE LOWER(:search) OR LOWER(company.company_email_address) LIKE LOWER(:search))',
+        { search: `%${search}%` },
+      );
+    }
+    const totalCount = await totalCountQuery.getCount();
+
+    if (companies.length > 0) {
+      resp.success = true;
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      resp.message = 'Companies fetched successfully';
+      resp.result = companies;
+      resp.count = totalCount;
+    } else {
+      resp.message = 'No records exist';
+      resp.count = 0;
+    }
+
+    return resp;
+  } catch (ex) {
+    resp.success = false;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 BadRequest';
+    resp.message = `Failed to Get Companies: ${ex.message}`;
+    resp.result = null;
+    return resp;
   }
+}
 
-
-
-//   async getCompany(companyId: number): Promise<Response> {
-//     const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
-//     try {
-//       const company = await this.companyRepository.findOne({
-//         where: { company_id: companyId, status: true },
-//         relations: ['ratings'],
-//       });
-
-//       if (company) {     
- 
-//         // Aggregate data
-//         const result = {
-//           company: {
-//             company_id: company.company_id,
-//             company_name: company.company_name,
-//             status: company.status,
-//             logo: company.logo,
-//             company_phone_number: company.company_phone_number,
-//             email_address: company.email_address,
-//             city: company.city,
-//             trade_license_number: company.trade_license_number,
-//             trade_license_expiry_date: company.trade_license_expiry_date,
-//             registration_date: company.registration_date,
-//             establishment_details: company.establishment_details,
-//             establishment_card: company.establishment_card,
-//             trade_license_document_path: company.trade_license_document_path,
-//             company_document_path: company.company_document_path,
-//           },
-//           ratings: company.ratings.map(rating => ({
-//             rating_id: rating.id,
-//             // rating_value: rating.rating_value,
-//  ratings: company.ratings.map(rating => {
-//   const avg = (
-//     (parseFloat(rating.rider_behavior_score) +
-//      parseFloat(rating.on_time_delivery_score) +
-//      parseFloat(rating.affordability_score)) / 3
-//   ).toFixed(1); // round to 1 decimal
-
-//   return {
-//     rating_id: rating.id,
-//     rating_value: avg,
-//     rider_behavior_score: rating.rider_behavior_score,
-//     on_time_delivery_score: rating.on_time_delivery_score,
-//     affordability_score: rating.affordability_score,
-//     review: rating.review,
-//     created_at: rating.created_at,
-//   };
-// }),
-
-//             rider_behavior_score: rating.rider_behavior_score,
-//             on_time_delivery_score: rating.on_time_delivery_score,
-           
-//           })),
-    
-//           };
-
-//         resp.success = true;
-//         resp.httpResponseCode = 200;
-//         resp.customResponseCode = '200 OK';
-//         resp.message = 'Get Company Details';
-//         resp.result = result;
-//         resp.count = 1; // Single company record
-//         return resp;
-//       }
-//       resp.success = false;
-//       resp.message = 'Company record does not exist';
-//       return resp;
-//     } catch (ex) {
-//       resp.success = false;
-//       resp.httpResponseCode = 400;
-//       resp.customResponseCode = '400 BadRequest';
-//       resp.message = `Failed to Get Company : ${ex.message}`;
-//       resp.result = null;
-//       return resp;
-//     }
-//   }
 
 async getCompany(companyId: number): Promise<Response> {
   const resp: Response = {
@@ -554,29 +525,6 @@ async getAllJobs({ page, limit, status, search }) {
 }
 
 
-//  async getShipmentOverview(id: number) {
-//     return this.shipmentRepository.findOne({
-//       where: { id },
-//       relations: ['courierCompany', 'rider', 'cod_payment'],
-//       select: {
-//         id: true,
-//         status: true,
-//         parcel_type: true,
-//         shipment_type: true,
-//         pickup_time: true,
-//         delivery_time: true,
-//         receiver_name: true,
-//         sender_name: true,
-//         shipment_id_tag_no: true,
-//         createdOn: true,
-//         sender_phone: true,
-//         receiver_phone: true,
-//         courierCompany: { company_name: true },
-//         rider: { rider_name: true, vehicle_type: true },
-//         cod_payment: { amount_received: true, pending_amount: true, cod_amount: true },
-//       },
-//     });
-//   }
 
 async getShipmentOverview(id: number) {
   return this.shipmentRepository.findOne({
@@ -601,20 +549,6 @@ async getShipmentOverview(id: number) {
     },
   });
 }    
-// async getCodShipments(page: number, limit: number, courier_company?: string) {
-//     const query = this.codPaymentRepository.createQueryBuilder('shipment');
-
-//     if (courier_company) {
-//       query.andWhere('shipment.sender_name = :courier_company OR shipment.receiver_name = :courier_company', { courier_company});
-//     }
-
-//     const [data, total] = await query
-//       .skip((page - 1) * limit)
-//       .take(limit)
-//       .getManyAndCount();
-
-//     return { data, total };
-//   }
 
 async getCodShipments(page: number, limit: number, courier_company?: string) {
   const query = this.codPaymentRepository
@@ -673,14 +607,6 @@ await this.codPaymentRepository.save(codPayment);
 
 
   
-//  async validateSuperAdmin(email: string, pass: string): Promise<any> {
-//     const user = await this.findByEmail(email);
-//     if (user && await bcrypt.compare(pass, user.password)) {
-//       const { password, ...result } = user;
-//       return result;
-//     }
-//     return null;
-//   }
 
 
 

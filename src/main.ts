@@ -1,20 +1,29 @@
 // main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-  import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
+
 async function bootstrap() {
-    console.log('📍 Starting bootstrap...');
+  console.log('📍 Starting bootstrap...');
   const app = await NestFactory.create(AppModule);
+
   app.useGlobalPipes(
     new ValidationPipe({
-      transform: true, // Enable automatic transformation of DTO fields
-      transformOptions: { enableImplicitConversion: true }, // Allow implicit conversions
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
     }),
-  );    // app.setGlobalPrefix('api');
+  );
+
+  // ✅ CORS must be enabled before app.listen()
+  app.enableCors({
+    origin: 'http://localhost:3000',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
 
   console.log('✅ AppModule created.');
-  // const port = process.env.PORT || 3000;
   await app.listen(3001);
-  console.log(`🚀 Application is running on: http://localhost:3000}`);
+  console.log(`🚀 Application is running on: http://localhost:3001`);
 }
+
 bootstrap();

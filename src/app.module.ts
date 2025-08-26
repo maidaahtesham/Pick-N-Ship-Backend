@@ -51,6 +51,7 @@ import { CustomerUserModule } from './customer_user/customer_user.module';
       autoLoadEntities: true,
       synchronize: true,
       logging: true,
+      
       entities: [
         courier_company,
         super_admin,
@@ -64,8 +65,8 @@ import { CustomerUserModule } from './customer_user/customer_user.module';
         company_document,
         shipping_detail
       ],
-      migrations: ['dist/migrations/*.js'],
-      migrationsRun: false,
+      migrations: ['dist/migrations/*.ts'],
+      migrationsRun: true, // Automatically run migrations on startup
     };
   },
 }),

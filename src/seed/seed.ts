@@ -72,8 +72,7 @@ async function seed() {
     rating.shipment = shipment;
     rating.customer = customer;
     rating.rider = rider;
-    rating.company = { company_id: 1 } as any; // Ideally, fetch real CourierCompany entity
-
+ 
     rating.rider_behavior_score = "4.5";
     rating.on_time_delivery_score = "5.0";
     rating.affordability_score = "4.0";

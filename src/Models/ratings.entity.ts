@@ -1,6 +1,6 @@
 // src/models/ratings.entity.ts
 
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
 import { Shipment } from './shipment.entity';
 import { Customer } from './customer.entity';
 import { Rider } from './rider.entity';
@@ -11,6 +11,9 @@ import { courier_company } from './courier_company.entity';
 export class Rating {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({ type: 'int' })  // 1 to 5
+  stars: number;
 
   @ManyToOne(() => Shipment, (shipment) => shipment.ratings)
   shipment: Shipment;

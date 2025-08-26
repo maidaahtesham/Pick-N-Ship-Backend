@@ -30,12 +30,20 @@ export class courier_company {
   @Column({length:100, nullable:true})
   company_address:string;
 
+      @Column({ length: 20, nullable: true })
+  company_email_address: string;
+
     @Column({ length: 20, nullable: true })
   company_phone_number: string;
 
   @Column({ length: 20, nullable: true })
   pns_account_full_name: string;
 
+ @Column({ length: 20, nullable: true })
+  registeration_date: string;
+
+   @Column({ length: 20, nullable: true })
+  registeration_status: string;
 
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;

@@ -10,24 +10,17 @@ import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 export class AdminPortalController {
   constructor(private readonly adminPortalService: AdminPortalService) {}
 
-  @Post('create-super-admin')
+@Post('create-super-admin')
   @HttpCode(200)
   async createSuperAdmin(@Body() data: Partial<super_admin>): Promise<Response> {
     return this.adminPortalService.createSuperAdmin(data);
   }
 
-
-@Get('get-all-companies-details')
-  @HttpCode(200)
-  async getallCompanies(): Promise<Response> {
-    return await this.adminPortalService.getallCompaniesdetails();
-  }
-
-  // @Get('get-company')
-  // @HttpCode(200)
-  // async getCompany(@Query('companyId') companyId: number): Promise<Response> {
-  //   return await this.adminPortalService.getCompany(companyId);
-  // }
+@Post('get-all-companies-details')
+@HttpCode(200)
+async getallCompanies(@Body() body: any): Promise<Response> {
+  return await this.adminPortalService.getallCompaniesdetails(body);
+}
 
   @Post('get-company')
 @HttpCode(200)
@@ -73,16 +66,6 @@ updateCompanyStatus(@Body() data: { company_id: number; status: 'accepted' | 'de
     return this.adminPortalService.getAllJobs({ page, limit, status, search });
   }
 
-
-  //   @Get(':id/overview')
-  // async getShipmentOverview(@Param('id') id: number) {
-  //   const overview = await this.adminPortalService.getShipmentOverview(id);
-  //   if (!overview) {
-  //     throw new NotFoundException('Shipment not found');
-  //   }
-  //   return overview;
-  // }
-
   @Post('overview')
 async getShipmentOverview(@Body('id') id: number) {
   const overview = await this.adminPortalService.getShipmentOverview(id);
@@ -93,14 +76,6 @@ async getShipmentOverview(@Body('id') id: number) {
 }
 
 
-// @Get('cod')
-//   async getAll(
-//     @Query('page') page: number = 1,
-//     @Query('limit') limit: number = 10,
-//     @Query('company') company?: string,
-//   ) {
-//     return this.adminPortalService.getCodShipments(+page, +limit, company);
-//   }
 
 @Post('cod')
 async getAll(@Body() body: { page?: number; limit?: number; company?: string }) {
