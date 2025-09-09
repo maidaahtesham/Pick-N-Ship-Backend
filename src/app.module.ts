@@ -66,7 +66,7 @@ import { CustomerUserModule } from './customer_user/customer_user.module';
         shipping_detail
       ],
       migrations: ['dist/migrations/*.ts'],
-      migrationsRun: true, // Automatically run migrations on startup
+      migrationsRun: false, // Automatically run migrations on startup
     };
   },
 }),

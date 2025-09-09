@@ -78,7 +78,7 @@ rejection_reason: string;
   company_document: company_document[];
 
   @OneToMany(() => shipping_detail, (shipping) => shipping.company)
-  shippingDetails: shipping_detail[];
+  shipping_details: shipping_detail[];
 
   @OneToMany(()=> vendor_user,(vendor_user) => vendor_user.company)
   vendorUser: vendor_user[];

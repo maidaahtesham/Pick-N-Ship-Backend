@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { courier_company } from './courier_company.entity';
 
 @Entity()
@@ -6,7 +6,12 @@ export class company_document {
   @PrimaryGeneratedColumn()
   document_id: number;
 
+  @Column()
+  company_id: number;
+
+  // Relation mapped to same column
   @ManyToOne(() => courier_company, (company) => company.company_document)
+  @JoinColumn({ name: 'company_id' })   // ✅ same column use hoga
   company: courier_company;
 
   @Column({ length: 255, nullable: true })

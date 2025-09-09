@@ -25,7 +25,16 @@ export class customer_signup_dto{
   @IsNumber()
   customer_id: number; 
 
+  @IsString()
+  user_type: string; // e.g., 'customer', 'admin', etc.
 
+  is_email_verified:boolean;
+
+  createdBy: string;
+  createdOn: Date;
+  updatedBy: string;
+
+  company_id:number;
 
 
 }

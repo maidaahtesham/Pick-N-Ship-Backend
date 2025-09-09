@@ -42,7 +42,7 @@ async getCompany(@Body() body: { companyId: number }): Promise<Response> {
   }
 
 @Post('update-company-status')
-updateCompanyStatus(@Body() data: { company_id: number; status: 'accepted' | 'declined'; rejection_reason?: string }) {
+updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'accepted' | 'rejected'; rejection_reason?: string }) {
   return this.adminPortalService.updateCompanyStatus(data.company_id, data.status, data.rejection_reason);
 }
 
@@ -51,30 +51,44 @@ updateCompanyStatus(@Body() data: { company_id: number; status: 'accepted' | 'de
     return this.adminPortalService.setCommission(body);
   }
 
-  @Get('search-companies')
-  searchCompanies(@Query('query') query: string) {
-    return this.adminPortalService.searchCompanies(query);
-  }
+ 
 
- @Get('get-all-jobs')
-  getAllJobs(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-    @Query('status') status?: string,
-    @Query('search') search?: string,
-  ) {
-    return this.adminPortalService.getAllJobs({ page, limit, status, search });
-  }
-
-  @Post('overview')
-async getShipmentOverview(@Body('id') id: number) {
-  const overview = await this.adminPortalService.getShipmentOverview(id);
-  if (!overview) {
-    throw new NotFoundException('Shipment not found');
-  }
-  return overview;
+  @Post('search-companies')
+searchCompanies(@Body() body: { company_name?: string; city?: string }) {
+  return this.adminPortalService.searchCompanies(body.company_name, body.city);
 }
 
+
+//  @Get('get-all-jobs')
+//   getAllJobs(
+//     @Query('page') page: number = 1,
+//     @Query('limit') limit: number = 10,
+//     @Query('status') status?: string,
+//     @Query('search') search?: string,
+//   ) {
+//     return this.adminPortalService.getAllJobs({ page, limit, status, search });
+//   }
+
+@Post('get-all-jobs')
+getAllJobs(@Body() body: { page?: number; limit?: number; status?: string; search?: string }) {
+  const { page = 1, limit = 10, status, search } = body;
+  return this.adminPortalService.getAllJobs({ page, limit, status, search });
+}
+
+
+//   @Post('overview')
+// async getShipmentOverview(@Body('id') id: number) {
+//   const overview = await this.adminPortalService.getShipmentOverview(id);
+//   if (!overview) {
+//     throw new NotFoundException('Shipment not found');
+//   }
+//   return overview;
+// }
+
+@Post('shipment-overview')
+async getShipmentOverview(@Body('id') id: number) {
+  return this.adminPortalService.getShipmentOverview(id);
+}
 
 
 @Post('cod')

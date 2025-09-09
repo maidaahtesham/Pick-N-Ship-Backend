@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Body, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs'; // ✅
 
@@ -37,6 +37,8 @@ private dataSource: DataSource,
   @InjectRepository(shipping_detail)
   private shipmentDetailsRepository: Repository<shipping_detail>
 
+  
+
 ) {}
 
 
@@ -47,14 +49,8 @@ async hashPassword(password: string): Promise<string> {
   }
 
   async createSuperAdmin(data: Partial<super_admin>): Promise<Response> {
-  const resp: Response = {
-    success: false,
-    message: '',
-    result: null,
-    httpResponseCode: null,
-    customResponseCode: '',
-    count: 0
-  };
+ 
+  const resp = new Response();
 
   try {
     if (!data.email || !data.password) {
@@ -89,7 +85,9 @@ async hashPassword(password: string): Promise<string> {
     resp.httpResponseCode = 200;
     resp.customResponseCode = '200 OK';
     return resp;
-  } catch (error) {
+
+  } 
+  catch (error) {
     resp.success = false;
     resp.message = 'Failed to insert/update super admin: ' + error.message;
     resp.httpResponseCode = 400;
@@ -117,15 +115,8 @@ async hashPassword(password: string): Promise<string> {
  
 async getallCompaniesdetails(body: any): Promise<Response> {
   const { search, status, sortBy, sortOrder, page = 1, limit = 10 } = body;
+  const resp=new Response();
 
-  const resp: Response = {
-    success: false,
-    message: '',
-    result: null,
-    httpResponseCode: null,
-    customResponseCode: '',
-    count: 0,
-  };
 
   try {
     // Map frontend sortBy to database column names
@@ -215,23 +206,18 @@ async getallCompaniesdetails(body: any): Promise<Response> {
 
 
 async getCompany(companyId: number): Promise<Response> {
-  const resp: Response = {
-    success: false,
-    message: '',
-    result: null,
-    httpResponseCode: null,
-    customResponseCode: '',
-    count: 0
-  };
+  const resp=new Response();
 
   try {
     const company = await this.companyRepository.findOne({
       where: { company_id: companyId, status: true },
-      relations: ['ratings','vendor_user', 'company_document', 'shipment_detail'],
+      relations: ['ratings','vendorUser', 'company_document', 'shipping_details'],
+
     });
   if (company) {
       // Fetch email_address from vendor_user
-      const email_address = company.vendorUser ? company.vendorUser : null;
+      // const email_address = company.vendorUser ? company.vendorUser : null;
+      const email_address = company.vendorUser?.[0]?.email_address || null;
 
    const documentDetails: Partial<company_document> = company.company_document?.[0] || {};
       const result = {
@@ -241,7 +227,7 @@ async getCompany(companyId: number): Promise<Response> {
           status: company.status,
           logo: company.logo,
           company_phone_number: company.company_phone_number,
-          email_address: email_address,
+          email_address: company.company_email_address || email_address,
           city: company.city,
           trade_license_number: documentDetails.trade_license_number,
           trade_license_expiry_date: documentDetails.trade_license_expiry_date,
@@ -292,7 +278,7 @@ async getCompany(companyId: number): Promise<Response> {
 }
 
   async editCompany(data: edit_courier_company_dto): Promise<Response> {
-    const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
+    const resp=new Response();
     try {
       const company = await this.companyRepository.findOne({ where: { company_id: data.company_id, status: true } });
       if (company) {
@@ -322,7 +308,7 @@ async getCompany(companyId: number): Promise<Response> {
   }
 
   async deleteCompany(companyId: number): Promise<Response> {
-    const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
+    const resp= new Response();
     try {
       const company = await this.companyRepository.findOne({ where: { company_id: companyId, status: true } });
       if (company) {
@@ -349,20 +335,9 @@ async getCompany(companyId: number): Promise<Response> {
   }
  
 
-async updateCompanyStatus(
-  company_id: number,
-  status: 'accepted' | 'declined',
-  rejection_reason?: string,
-): Promise<Response> {
-  const resp: Response = {
-    success: false,
-    message: '',
-    result: null,
-    httpResponseCode: null,
-    customResponseCode: '',
-    count: 0,
-  };
-
+async updateCompanyStatus(company_id: number, status: 'pending'|'accepted' | 'rejected',rejection_reason?: string,): Promise<Response> 
+{
+    const resp= new Response();
   try {
     const company = await this.companyRepository.findOne({ where: { company_id } });
 
@@ -374,7 +349,7 @@ async updateCompanyStatus(
     }
 
     // If declining, rejection_reason must be provided
-    if (status === 'declined' && !rejection_reason) {
+    if (status === 'rejected' && !rejection_reason) {
       resp.httpResponseCode = 400;
       resp.customResponseCode = '400 BadRequest';
       resp.message = 'Rejection reason is required when declining a company';
@@ -382,8 +357,8 @@ async updateCompanyStatus(
     }
 
     // Prepare update data
-    const updateData: any = { registration_status: status };
-    if (status === 'declined') {
+    const updateData: any = { registeration_status: status };
+    if (status === 'rejected') {
       updateData.rejection_reason = rejection_reason;
     }
 
@@ -408,7 +383,8 @@ async updateCompanyStatus(
 
 
 async setCommission({ company_id, commission_type, commission_rate }: any): Promise<Response> {
-  const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
+    const resp= new Response();
+
   try {
     // Check if shipping details exist for the company
     const existingShippingDetail = await this.shipmentDetailsRepository.findOne({ where: { company: { company_id } } });
@@ -459,96 +435,215 @@ async setCommission({ company_id, commission_type, commission_rate }: any): Prom
     return resp;
   }
 }
-async searchCompanies(query: string): Promise<Response> {
-    const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
-    try {
-      const companies = await this.companyRepository.find({
-        where: [
-          { company_name: ILike(`%${query}%`) },
-          { city: ILike(`%${query}%`) },
-        ],
-        relations: ['ratings'], // Assuming relationships are defined
-      });
 
-      if (companies.length > 0) {
-        resp.success = true;
-        resp.httpResponseCode = 200;
-        resp.customResponseCode = '200 OK';
-        resp.message = 'Search Results';
-        resp.result = companies;
-        resp.count = companies.length;
-        return resp;
-      }
-      resp.success = false;
-      resp.message = 'No records found';
-      return resp;
-    } catch (ex) {
-      resp.success = false;
-      resp.httpResponseCode = 400;
-      resp.customResponseCode = '400 BadRequest';
-      resp.message = `Failed to search companies : ${ex.message}`;
-      resp.result = null;
-      return resp;
+async searchCompanies(company_name?: string, city?: string): Promise<Response> {
+    const resp= new Response();
+
+
+  try {
+    const whereConditions: any[] = [];
+
+    if (company_name) {
+      whereConditions.push({ company_name: ILike(`%${company_name}%`) });
     }
+
+    if (city) {
+      whereConditions.push({ city: ILike(`%${city}%`) });
+    }
+
+    const companies = await this.companyRepository.find({
+      where: whereConditions.length > 0 ? whereConditions : undefined,
+      relations: ['ratings'], // if relation exists
+    });
+
+    if (companies.length > 0) {
+      resp.success = true;
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      resp.message = 'Search Results';
+      resp.result = companies;
+      resp.count = companies.length;
+    } else {
+      resp.success = false;
+      resp.httpResponseCode = 404;
+      resp.customResponseCode = '404 NotFound';
+      resp.message = 'No records found';
+    }
+
+    return resp;
+  } catch (ex) {
+    resp.success = false;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 BadRequest';
+    resp.message = `Failed to search companies : ${ex.message}`;
+    resp.result = null;
+    return resp;
   }
-
-async getAllJobs({ page, limit, status, search }) {
-  const query = this.shipmentRepository
-    .createQueryBuilder('s')
-    .leftJoinAndSelect('s.courierCompany', 'company')
-    .leftJoinAndSelect('s.rider', 'rider') // <-- Join rider to access rider_name
-    .skip((page - 1) * limit)
-    .take(limit);
-
-  if (status) {
-    query.andWhere('s.job_status = :status', { status });
-  }
-
-  if (search) {
-    query.andWhere(
-      `(s.sender_name ILIKE :search 
-        OR s.receiver_name ILIKE :search 
-        OR company.company_name ILIKE :search 
-        OR rider.rider_name ILIKE :search)`, // <-- Rider name added to search
-      { search: `%${search}%` },
-    );
-  }
-
-  const [data, total] = await query.getManyAndCount();
-
-  return {
-    data,
-    total,
-    currentPage: page,
-    totalPages: Math.ceil(total / limit),
-  };
 }
 
 
+// async getAllJobs({ page, limit, status, search }) {
+//   const query = this.shipmentRepository
+//     .createQueryBuilder('s')
+//     .leftJoinAndSelect('s.courierCompany', 'company')
+//     .leftJoinAndSelect('s.rider', 'rider') // <-- Join rider to access rider_name
+//     .skip((page - 1) * limit)
+//     .take(limit);
 
-async getShipmentOverview(id: number) {
-  return this.shipmentRepository.findOne({
-    where: { id },
-    relations: ['courierCompany', 'rider', 'cod_payment'],
-    select: {
-      id: true,
-      status: true,
-      parcel_type: true,
-      shipment_type: true,
-      pickup_time: true,
-      delivery_time: true,
-      receiver_name: true,
-      sender_name: true,
-      shipment_id_tag_no: true,
-      createdOn: true,
-      sender_phone: true,
-      receiver_phone: true,
-      courierCompany: { company_name: true },
-      rider: { rider_name: true, vehicle_type: true },
-      cod_payment: { amount_received: true, pending_amount: true, cod_amount: true },
-    },
-  });
-}    
+//   if (status) {
+//     query.andWhere('s.job_status = :status', { status });
+//   }
+
+//   if (search) {
+//     query.andWhere(
+//       `(s.sender_name ILIKE :search 
+//         OR s.receiver_name ILIKE :search 
+//         OR company.company_name ILIKE :search 
+//         OR rider.rider_name ILIKE :search)`, // <-- Rider name added to search
+//       { search: `%${search}%` },
+//     );
+//   }
+
+//   const [data, total] = await query.getManyAndCount();
+
+//   return {
+//     data,
+//     total,
+//     currentPage: page,
+//     totalPages: Math.ceil(total / limit),
+//   };
+// }
+
+async getAllJobs({ page, limit, status, search }) {
+  try {
+    const query = this.shipmentRepository
+      .createQueryBuilder('s')
+      .leftJoinAndSelect('s.courierCompany', 'company')
+      .leftJoinAndSelect('s.rider', 'rider') // join rider
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (status) {
+      query.andWhere('s.job_status = :status', { status });
+    }
+
+    if (search) {
+      query.andWhere(
+        `(s.sender_name ILIKE :search 
+          OR s.receiver_name ILIKE :search 
+          OR company.company_name ILIKE :search 
+          OR rider.rider_name ILIKE :search)`,
+        { search: `%${search}%` },
+      );
+    }
+
+    const [data, total] = await query.getManyAndCount();
+
+    return {
+      success: true,
+      message: 'Jobs fetched successfully',
+      data: {
+        jobs: data,
+        pagination: {
+          total,
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          limit,
+        },
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Failed to fetch jobs',
+      error: error.message,
+    };
+  }
+}
+
+
+// async getShipmentOverview(id: number) {
+//   return this.shipmentRepository.findOne({
+//     where: { id },
+//     relations: ['courierCompany', 'rider', 'cod_payment'],
+//     select: {
+//       id: true,
+//       status: true,
+//       parcel_type: true,
+//       shipment_type: true,
+//       pickup_time: true,
+//       delivery_time: true,
+//       receiver_name: true,
+//       sender_name: true,
+//       shipment_id_tag_no: true,
+//       createdOn: true,
+//       sender_phone: true,
+//       receiver_phone: true,
+//       courierCompany: { company_name: true },
+//       rider: { rider_name: true, vehicle_type: true },
+//       cod_payment: { amount_received: true, pending_amount: true, cod_amount: true },
+//     },
+//   });
+// }    
+
+
+
+
+async getShipmentOverview(@Body('id') id: number): Promise<Response> {
+  const resp=new Response()
+  // const resp: any = {
+  //   success: false,
+  //   httpResponseCode: 500,
+  //   customResponseCode: '500 InternalServerError',
+  //   message: '',
+  //   result: null,
+  // };
+
+  try {
+    const overview = await this.shipmentRepository.findOne({
+      where: { id },
+      relations: ['courierCompany', 'rider', 'cod_payment'],
+      select: {
+        id: true,
+        status: true,
+        parcel_type: true,
+        shipment_type: true,
+        pickup_time: true,
+        delivery_time: true,
+        receiver_name: true,
+        sender_name: true,
+        shipment_id_tag_no: true,
+        createdOn: true,
+        sender_phone: true,
+        receiver_phone: true,
+        courierCompany: { company_name: true },
+        rider: { rider_name: true, vehicle_type: true },
+        cod_payment: { amount_received: true, pending_amount: true, cod_amount: true },
+      },
+    });
+
+    if (overview) {
+      resp.success = true;
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      resp.message = 'Shipment overview fetched successfully';
+      resp.result = overview;
+    } else {
+      resp.success = false;
+      resp.httpResponseCode = 404;
+      resp.customResponseCode = '404 NotFound';
+      resp.message = 'Shipment not found';
+    }
+  } catch (ex) {
+    resp.success = false;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 BadRequest';
+    resp.message = `Failed to fetch shipment overview: ${ex.message}`;
+    resp.result = null;
+  }
+
+  return resp;
+}
 
 async getCodShipments(page: number, limit: number, courier_company?: string) {
   const query = this.codPaymentRepository

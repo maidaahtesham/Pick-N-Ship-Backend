@@ -32,8 +32,8 @@ export class Customer {
       @OneToMany(() => shipment_request, (shipment_request: shipment_request) => shipment_request.customer)
     shipment_request: shipment_request[];
     
-@ManyToOne(() => courier_company, (company) => company.customer, { nullable: true })
-  @JoinColumn({ name: 'courier_company_id' }) // Foreign key column
+@ManyToOne(() => courier_company, (company) => company.customer, { nullable: false })
+  @JoinColumn({ name: 'company_id' }) // Foreign key column
   company: courier_company;
 
 

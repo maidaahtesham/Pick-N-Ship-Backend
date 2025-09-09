@@ -14,7 +14,9 @@ import { Response } from 'src/ViewModel/response';
 import { SelectVehicleDTO } from 'src/ViewModel/SelectVehicleDTO';
 import { RegularBookingDTO } from 'src/ViewModel/RegularBookingDTO';
 import { customer_signup_dto } from 'src/ViewModel/customer_signup_dto';
-import bcrypt from 'bcryptjs/umd/types';
+import * as bcrypt from 'bcryptjs';
+
+
 
 @Injectable()
 export class CustomerUserService {
@@ -35,7 +37,7 @@ export class CustomerUserService {
 
 
   async createShipmentRequest(customerId: number, data: ShipmentRequestDTO): Promise<Response> {
-    const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
+    const resp= new Response();
 
     try {
       const customer = await this.customerRepository.findOne({ where: { id: customerId }, relations: ['company'] });
@@ -133,14 +135,8 @@ export class CustomerUserService {
   }
 
   async createRegularBooking(customerId: number, data: RegularBookingDTO): Promise<Response> {
-    const resp: Response = {
-      success: false,
-      message: '',
-      result: null,
-      httpResponseCode: null,
-      customResponseCode: '',
-      count: 0,
-    };
+    const resp= new Response();
+
 
     try {
       const shipmentRequest = await this.shipmentRequestRepository.findOne({ where: { request_id: data.request_id, customer: { id: customerId } } });
@@ -207,14 +203,8 @@ export class CustomerUserService {
   }
 
   async selectVehicle(customerId: number, data: SelectVehicleDTO): Promise<Response> {
-    const resp: Response = {
-      success: false,
-      message: '',
-      result: null,
-      httpResponseCode: null,
-      customResponseCode: '',
-      count: 0,
-    };
+    const resp= new Response();
+
 
     try {
       const shipmentRequest = await this.shipmentRequestRepository.findOne({
@@ -293,4 +283,113 @@ export class CustomerUserService {
       return resp;
     }
   }
+
+  async hashPassword(password: string): Promise<string> {
+    const salt = await bcrypt.genSalt(10); // Generate salt with 10 rounds
+    return bcrypt.hash(password, salt); // Hash the password
+  }
+
+  async createCustomerUser(data: customer_signup_dto): Promise<Response> {
+    const resp= new Response();
+    try {
+      if (!data.email_address || !data.password) {
+        throw new Error('Email and password are required');
+      }
+
+      let customer: Customer | null = null;
+
+      const company = await this.courierCompanyRepository.findOne({ where: { company_id: data.company_id } });
+      if (!company) throw new Error("Company not found");
+
+      if (data.customer_id) {
+        customer = await this.customerRepository.findOne({ where: { id: data.customer_id  } });
+      } else if (data.email_address) {
+        customer = await this.customerRepository.findOne({ where: { email: data.email_address } });
+      }
+
+      if (customer) {
+        // Update existing record
+        if (data.password) {
+          // Hash the password if provided
+          data.password = await this.hashPassword(data.password);
+        }
+
+        // Update existing record with mapped fields
+        customer = this.customerRepository.merge(customer, {
+          firstname: data.first_name,
+          lastname: data.last_name,
+          email: data.email_address,
+          password: data.password,
+          user_type: data.user_type,
+          phone_number: data.phone_number || customer.phone_number,
+          createdBy: data.createdBy,
+          createdOn: data.createdOn,
+          updatedOn: new Date(),
+          updatedBy: data.updatedBy,          
+          is_email_verified:data.is_email_verified,
+          company:company,
+          status:true
+        });
+        await this.customerRepository.save(customer);
+        resp.message = 'Customer user updated successfully';
+      } else {
+        // Insert new record
+        const hashedPassword = await this.hashPassword(data.password);
+
+        const newCustomer = this.customerRepository.create({
+          firstname: data.first_name,
+          lastname: data.last_name,
+          email: data.email_address,
+          password: hashedPassword,
+          user_type: data.user_type,
+          phone_number: data.phone_number,
+          createdBy: data.createdBy,
+          createdOn: data.createdOn || new Date(),
+          updatedBy: data.updatedBy,
+          updatedOn: new Date(),
+          is_email_verified:data.is_email_verified,
+          status:true,
+          company:company,
+
+
+          
+        });
+        customer = await this.customerRepository.save(newCustomer);
+        resp.message = 'Customer user inserted successfully';
+      }
+
+      resp.success = true;
+      resp.result = customer;
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      return resp;
+    } catch (error) {
+      resp.success = false;
+      resp.message = 'Failed to insert/update vendor user: ' + error.message;
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 Bad Request';
+      return resp;
+    }
+  }
+
+  async findByEmail(email: string): Promise<Customer | null> {
+    return this.customerRepository.findOne({ where: { email } });
+  }
+
+  async validateCustomerUser(email: string, password: string): Promise<any> {
+    const user = await this.findByEmail(email);
+    if (!user || !user.password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const { password: userPassword, ...result } = user;
+    return result;
+  }
+
+
+
+
 }

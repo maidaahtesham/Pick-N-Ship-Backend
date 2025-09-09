@@ -15,16 +15,20 @@ export class Rating {
   @Column({ type: 'int' })  // 1 to 5
   stars: number;
 
-  @ManyToOne(() => Shipment, (shipment) => shipment.ratings)
+@ManyToOne(() => Shipment, (shipment) => shipment.ratings, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'shipment_id' })
   shipment: Shipment;
 
-  @ManyToOne(() => Customer, (customer) => customer.ratings)
+  @ManyToOne(() => Customer, (customer) => customer.ratings, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'customer_id' })
   customer: Customer;
-
-  @ManyToOne(() => Rider, (rider) => rider.ratings)
+  
+  @ManyToOne(() => Rider, (rider) => rider.ratings, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'rider_id' })
   rider: Rider;
 
-  @ManyToOne(() => courier_company, (company) => company.ratings)
+  @ManyToOne(() => courier_company, (company) => company.ratings, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'company_id' })
   company: courier_company;
 
   @Column('text')
@@ -42,8 +46,6 @@ export class Rating {
   @CreateDateColumn()
   created_at: Date;
 
-
-
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
 
@@ -58,5 +60,7 @@ updatedOn: Date;
 
 @Column({ type: 'boolean', default: null })
 status: boolean;
+
+
 
 }

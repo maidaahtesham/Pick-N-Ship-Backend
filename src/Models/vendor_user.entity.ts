@@ -39,5 +39,6 @@ updatedOn: Date;
 status: boolean;
 
 @ManyToOne(() => courier_company, (company) => company.vendorUser) 
-@JoinColumn({ name: 'company_id' }) company: courier_company;
+@JoinColumn({ name: 'company_id' }) 
+company: courier_company;
 }

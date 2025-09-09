@@ -23,7 +23,19 @@ export default new DataSource({
   database: process.env.DB_NAME,
   entities: [
 super_admin,
+Customer,
+Rating,
+Rider,
+Shipment,
+shipment_request,
+CodPayment,
+courier_company,
+vendor_user,
+company_document,
+shipping_detail
+
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false, // 🚨 very important for migrations
+  logging: true,
 });

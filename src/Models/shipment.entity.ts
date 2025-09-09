@@ -83,7 +83,7 @@ createdBy: string;
   ratings: Rating[];
 
 @ManyToOne(() => courier_company, (company) => company.shipments)
-@JoinColumn({ name: 'courier_company_id' })
+@JoinColumn({ name: 'company_id' })
 courierCompany: courier_company;
 
 @ManyToOne(() => Rider, (rider) => rider.shipments)

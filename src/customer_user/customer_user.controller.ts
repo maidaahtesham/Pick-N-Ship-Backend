@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ShipmentRequestDTO } from 'src/ViewModel/shipmentRequestDTO';
 import { RegularBookingDTO } from 'src/ViewModel/RegularBookingDTO';
 
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard)
 
 @Controller('api/customer-user')
 export class CustomerUserController {
@@ -33,5 +33,11 @@ async createRegularBooking(@Request() req, @Body() body: RegularBookingDTO): Pro
   return this.customerUserService.createRegularBooking(customerId, body);
 }
 
+
+@Post('create-customer-user')
+@HttpCode(200)
+async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
+    return this.customerUserService.createCustomerUser(data);
+}
 
 }

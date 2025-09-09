@@ -42,15 +42,7 @@ export class VendorService {
 
   /* CREATE Vendor User */
   async createVendorUser(data: vendorSignUpDTO): Promise<Response> {
-    const resp: Response = {
-      success: false,
-      message: '',
-      result: null,
-      httpResponseCode: null,
-      customResponseCode: '',
-      count: 0,
-    };
-
+    const resp= new Response();
     try {
       if (!data.email_address || !data.password) {
         throw new Error('Email and password are required');
@@ -58,12 +50,16 @@ export class VendorService {
 
       let vendor: vendor_user | null = null;
 
-      if (data.company_id) {
-        vendor = await this.vendorRepository.findOne({ where: { id: data.company_id } });
+      if (data.id) {
+        vendor = await this.vendorRepository.findOne({ where: { id: data.id } });
       } else if (data.email_address) {
         vendor = await this.vendorRepository.findOne({ where: { email_address: data.email_address } });
       }
+      const company= await this.courierCompanyRepository.findOne({where:{ company_id:data.company_id}})
 
+if (!company) {
+  throw new Error(`Company with id ${data.company_id} not found`);
+}
       if (vendor) {
         // Update existing record
         if (data.password) {
@@ -78,7 +74,9 @@ export class VendorService {
           email_address: data.email_address,
           password: data.password,
           phone_number:data.phone_number,
-          status:true
+          status:true,
+          company
+
         });
         await this.vendorRepository.save(vendor);
         resp.message = 'Vendor user updated successfully';
@@ -132,7 +130,7 @@ export class VendorService {
 
 
   async addVendorDetails(data: vendorDetailsDTO): Promise<Response> {
-  const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
+    const resp= new Response();
   try {
     // Convert string dates to Date objects
     const createdOn = new Date(data.created_on);
@@ -192,7 +190,7 @@ export class VendorService {
 }
 
   async addCompanyDocuments(data: company_document_dto): Promise<Response> {
-    const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
+    const resp= new Response();
     try {
       const company = await this.courierCompanyRepository.findOne({ where: { company_id: data.company_id } });
       if (!company) throw new Error('Company not found');
@@ -227,7 +225,7 @@ export class VendorService {
   }
 
   async addShippingDetails(data: shipping_detail_dto): Promise<Response> {
-    const resp: Response = { success: false, message: '', result: null, httpResponseCode: null, customResponseCode: '', count: 0 };
+    const resp= new Response();
     try {
       const company = await this.courierCompanyRepository.findOne({ where: { company_id: data.company_id } });
       if (!company) throw new Error('Company not found');
@@ -326,15 +324,7 @@ export class VendorService {
 //     }
 //   }
   async getActiveJobs(data: { company_id: number }): Promise<Response> {
-    const resp: Response = {
-      success: false,
-      message: '',
-      result: null,
-      httpResponseCode: null,
-      customResponseCode: '',
-      count: 0,
-    };
-
+    const resp= new Response();
     try {
       const shipments = await this.shipmentRepository.find({
         where: { courier_company_id: data.company_id },

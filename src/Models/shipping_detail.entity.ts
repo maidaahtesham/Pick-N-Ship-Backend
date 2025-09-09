@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { courier_company } from './courier_company.entity';
 
 @Entity()
@@ -6,7 +6,9 @@ export class shipping_detail {
   @PrimaryGeneratedColumn()
   shipping_id: number;
 
-  @ManyToOne(() => courier_company, (company) => company.shippingDetails)
+
+  @ManyToOne(() => courier_company, (company) => company.shipping_details)
+  @JoinColumn({ name: 'company_id' })  
   company: courier_company;
 
   @Column({
@@ -29,4 +31,14 @@ export class shipping_detail {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
   updatedOn: Date;
+
+  @Column({length:50, nullable: true})
+  createdBy: string;
+
+  @Column({length:50, nullable: true})
+  updatedBy: string;
+
+  @Column()
+  is_active: boolean;
+
 }

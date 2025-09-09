@@ -2,7 +2,7 @@ import { IsString, IsEmail, IsEnum, IsOptional, IsDate, MinLength } from 'class-
 
 export class vendorSignUpDTO{
 
-
+  id:number;
   @IsString()
   @MinLength(1)
   first_name: string;
