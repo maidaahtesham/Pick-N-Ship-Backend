@@ -14,7 +14,8 @@ import { super_admin } from '../Models/super_admin.entity';
 import { edit_courier_company_dto } from '../ViewModel/edit_courier_company.dto';
 import { Response } from '../ViewModel/response';
 import { DataSource, ILike, Or, Repository } from 'typeorm';
-
+import * as fs from 'fs';
+import * as path from 'path';
 @Injectable()
 export class AdminPortalService {
   constructor(
@@ -53,28 +54,34 @@ async hashPassword(password: string): Promise<string> {
   const resp = new Response();
 
   try {
-    if (!data.email || !data.password) {
-        throw new Error('Email and password are required');
-      }
+   // Validate email for all requests
+    if (!data.email) {
+      throw new Error('Email is required');
+    }
+     if (!data.admin_id && !data.password) {
+      throw new Error('Password is required for creating a new super admin');
+    }
 
     let admin: super_admin | null = null;
 
-    if (data.admin_id) {
+     if (data.admin_id) {
       admin = await this.superAdminRepository.findOne({ where: { admin_id: data.admin_id } });
     } else if (data.email) {
       admin = await this.superAdminRepository.findOne({ where: { email: data.email } });
     }
 
     if (admin) {
-        if (data.password) {
-          data.password = await this.hashPassword(data.password);
-        }
-
+       if (data.password) {
+        data.password = await this.hashPassword(data.password);
+      }
       admin = this.superAdminRepository.merge(admin, data);
       await this.superAdminRepository.save(admin);
       resp.message = 'Super admin updated successfully';
     } else {
-        data.password = await this.hashPassword(data.password);
+       if (!data.password) {
+        throw new Error('Password is required for creating a new super admin');
+      }
+      data.password = await this.hashPassword(data.password);
       admin = this.superAdminRepository.create(data);
       await this.superAdminRepository.save(admin);
       resp.message = 'Super admin inserted successfully';
@@ -85,9 +92,7 @@ async hashPassword(password: string): Promise<string> {
     resp.httpResponseCode = 200;
     resp.customResponseCode = '200 OK';
     return resp;
-
-  } 
-  catch (error) {
+  } catch (error) {
     resp.success = false;
     resp.message = 'Failed to insert/update super admin: ' + error.message;
     resp.httpResponseCode = 400;
@@ -95,6 +100,52 @@ async hashPassword(password: string): Promise<string> {
     return resp;
   }
 }
+async saveFile(file: Express.Multer.File): Promise<string> {
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    
+    // Create the uploads directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    // Generate a unique file name
+    const fileName = `${Date.now()}-${file.originalname}`;
+    const filePath = path.join(uploadDir, fileName);
+
+    // Save the file to the server's disk
+    fs.writeFileSync(filePath, file.buffer);
+
+    // Return the URL or relative path to the file
+    // Note: The client will need a separate endpoint to serve these static files
+    return `/uploads/${fileName}`; 
+  }
+
+async getProfile(admin_id: number, token?: string): Promise<Response> {
+    const resp = new Response();
+
+    try {
+      const admin = await this.superAdminRepository.findOne({ where: { admin_id } });
+      if (!admin) {
+        throw new NotFoundException('Super admin not found');
+      }
+
+      resp.success = true;
+      resp.result = admin;
+      resp.message = 'Profile fetched successfully';
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      return resp;
+    } catch (error) {
+      resp.success = false;
+      resp.message = 'Failed to fetch profile: ' + error.message;
+      resp.httpResponseCode = error instanceof NotFoundException ? 404 : 401;
+      resp.customResponseCode = error instanceof NotFoundException ? '404 Not Found' : '401 Unauthorized';
+      return resp;
+    }
+  }
+
+
+
   async findByEmail(email: string): Promise<super_admin | null> {
     return this.superAdminRepository.findOne({ where: { email } });
   }

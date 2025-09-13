@@ -26,8 +26,8 @@ async function bootstrap() {
   });
 
   console.log('✅ AppModule created.');
-  await app.listen(3001);
-  console.log(`🚀 Application is running on: http://localhost:3001`);
+  await app.listen(3002);
+  console.log(`🚀 Application is running on: http://localhost:3002`);
 }
 
 bootstrap();

@@ -305,7 +305,7 @@ async function unifiedSeed() {
     // Seed shipment with valid request_id
     const shipments = [
       {
-        courier_company_id: savedCompanies[0].company_id,
+       
         shipment_id_tag_no: 'SHIP001',
         request_id: savedRequests[0].request_id, // Use the saved request ID
         customer_id: savedCustomers[0].id,
@@ -332,7 +332,7 @@ async function unifiedSeed() {
 //         customer: { id: savedCustomers[0].id } as DeepPartial<Customer>,
       },
       {
-        courier_company_id: savedCompanies[1].company_id,
+        // courier_company_id: savedCompanies[1].company_id,
         shipment_id_tag_no: 'SHIP002',
         request_id: savedRequests[1].request_id, // Use the saved request ID
         customer_id: savedCustomers[1].id,

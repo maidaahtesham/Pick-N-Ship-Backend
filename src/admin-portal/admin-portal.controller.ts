@@ -1,11 +1,12 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { AdminPortalService } from './admin-portal.service';
 import { edit_courier_company_dto } from '../ViewModel/edit_courier_company.dto';
 import { Response } from '../ViewModel/response';
 import { super_admin } from '../Models/super_admin.entity';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
-
-@UseGuards(JwtAuthGuard)
+import { admin_user } from 'src/ViewModel/admin-user.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+ @UseGuards(JwtAuthGuard)
 @Controller('api/admin-portal')
 export class AdminPortalController {
   constructor(private readonly adminPortalService: AdminPortalService) {}
@@ -15,6 +16,21 @@ export class AdminPortalController {
   async createSuperAdmin(@Body() data: Partial<super_admin>): Promise<Response> {
     return this.adminPortalService.createSuperAdmin(data);
   }
+  
+ @Post('upload-profile-picture')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('profile_picture'))
+  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+     const filePath = await this.adminPortalService.saveFile(file);
+    return { path: filePath };
+  }
+
+@Post('get-superadmin-profile')
+  @HttpCode(200)
+  async getProfile(@Body() body: admin_user, @Req() req: Request): Promise<Response> {
+     const admin_id = body.admin_id;
+    return this.adminPortalService.getProfile(admin_id); }
+
 
 @Post('get-all-companies-details')
 @HttpCode(200)
@@ -59,16 +75,7 @@ searchCompanies(@Body() body: { company_name?: string; city?: string }) {
 }
 
 
-//  @Get('get-all-jobs')
-//   getAllJobs(
-//     @Query('page') page: number = 1,
-//     @Query('limit') limit: number = 10,
-//     @Query('status') status?: string,
-//     @Query('search') search?: string,
-//   ) {
-//     return this.adminPortalService.getAllJobs({ page, limit, status, search });
-//   }
-
+ 
 @Post('get-all-jobs')
 getAllJobs(@Body() body: { page?: number; limit?: number; status?: string; search?: string }) {
   const { page = 1, limit = 10, status, search } = body;
@@ -76,15 +83,7 @@ getAllJobs(@Body() body: { page?: number; limit?: number; status?: string; searc
 }
 
 
-//   @Post('overview')
-// async getShipmentOverview(@Body('id') id: number) {
-//   const overview = await this.adminPortalService.getShipmentOverview(id);
-//   if (!overview) {
-//     throw new NotFoundException('Shipment not found');
-//   }
-//   return overview;
-// }
-
+ 
 @Post('shipment-overview')
 async getShipmentOverview(@Body('id') id: number) {
   return this.adminPortalService.getShipmentOverview(id);

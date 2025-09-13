@@ -30,8 +30,7 @@ const shipments =[
     request_id: 1,
     customer_id: customer.id,
     customer: customer,
-    courier_company_id: company.company_id,
-    courierCompany: company,
+ 
 
     pickup_time: new Date(),
     delivery_time: new Date(), // +2 hrs

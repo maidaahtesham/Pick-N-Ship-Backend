@@ -184,7 +184,7 @@ export class CustomerUserService {
         request_date: savedRequest.request_date,
         special_instruction: savedRequest.special_instruction,
         parcel_photos: savedRequest.parcel_photos,
-        courier_company_id: savedRequest.company?.company_id || null,
+        // courier_company_id: savedRequest.company?.company_id || null,
         createdOn: savedRequest.createdOn,
         updatedOn: savedRequest.updatedOn,
         createdBy: savedRequest.createdBy,
