@@ -21,7 +21,8 @@ import { vendor_user } from './Models/vendor_user.entity';
 import { company_document } from './Models/company_document.entity';
 import { shipping_detail } from './Models/shipping_detail.entity';
 import { CustomerUserModule } from './customer_user/customer_user.module';
-
+import * as fs from 'fs';
+import * as path from 'path';
 @Module({
   imports: [
     // Load environment variables globally
@@ -49,9 +50,17 @@ import { CustomerUserModule } from './customer_user/customer_user.module';
       password: configService.get<string>('DB_PASSWORD')?.toString() || 'AKDNeHRC',
       database: configService.get<string>('DB_NAME') || 'pick_n_ship',
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: false,
       logging: true,
-      
+      ssl: { 
+        rejectUnauthorized: false,
+      //  ca: [fs.readFileSync(path.join(__dirname, './rds-combined-ca-bundle.pem')).toString()],
+       },      
+  //      retryAttempts: 10,
+  //     retryDelay: 3000,
+  //    extra: {
+  //   ssl: true, // ✅ ye line add karo
+  // },
       entities: [
         courier_company,
         super_admin,
@@ -65,7 +74,9 @@ import { CustomerUserModule } from './customer_user/customer_user.module';
         company_document,
         shipping_detail
       ],
-      migrations: ['dist/migrations/*.ts'],
+      // migrations: ['dist/migrations/*.ts'],
+
+      migrations: ['dist/migrations/*.js'],
       migrationsRun: false, // Automatically run migrations on startup
     };
   },

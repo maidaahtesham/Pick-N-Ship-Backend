@@ -20,7 +20,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'pick_n_ship',
   synchronize: false, // Set to true temporarily if tables need creation
   logging: true,
-  entities: ['src/Models/**/*.entity.ts'],
+  entities: ['../Models/**/*.entity.ts'],
   migrations: ['src/migrations/**/*.ts'],
 });
 

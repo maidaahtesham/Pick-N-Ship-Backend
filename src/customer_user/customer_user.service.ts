@@ -78,7 +78,7 @@ export class CustomerUserService {
       const savedRequest: shipment_request = savedRequests[0];
 
       const shipment = this.shipmentRepository.create({
-        courier_company_id: savedRequest.company?.company_id || 1, // Default to company_id 1 if not set
+        // courier_company_id: savedRequest.company?.company_id || 1, // Default to company_id 1 if not set
          shipment_id_tag_no: `SHIP-${savedRequest.request_id}-${Date.now()}`,
         request_id: savedRequest.request_id,
         customer_id: customerId,

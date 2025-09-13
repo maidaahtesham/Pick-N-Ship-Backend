@@ -36,6 +36,7 @@ shipping_detail
 
   ],
   migrations: ['src/migrations/*.ts'],
+  
   synchronize: false, // 🚨 very important for migrations
   logging: true,
 });

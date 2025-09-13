@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards } from '@nestjs/common';
 import { AdminPortalService } from './admin-portal.service';
-import { edit_courier_company_dto } from 'src/ViewModel/edit_courier_company.dto';
-import { Response } from 'src/ViewModel/response';
-import { super_admin } from 'src/Models/super_admin.entity';
+import { edit_courier_company_dto } from '../ViewModel/edit_courier_company.dto';
+import { Response } from '../ViewModel/response';
+import { super_admin } from '../Models/super_admin.entity';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)

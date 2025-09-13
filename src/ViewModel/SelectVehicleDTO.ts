@@ -1,4 +1,4 @@
-// src/ViewModel/select-vehicle.dto.ts
+// ../ViewModel/select-vehicle.dto.ts
 import { IsEnum, IsNumber, IsString, Length, IsOptional, IsArray, Min, Max } from 'class-validator';
 import { Column } from 'typeorm';
 

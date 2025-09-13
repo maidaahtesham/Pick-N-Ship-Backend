@@ -16,8 +16,12 @@ async function bootstrap() {
 
   // ✅ CORS must be enabled before app.listen()
   app.enableCors({
-    origin: 'http://localhost:3000',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  // origin: ['http://localhost:3002', 'http://18.132.206.173:3001'] ,// add your new origin here
+ 
+  origin: '*',  // ✅ allow all origins (not for production)
+ 
+  
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 

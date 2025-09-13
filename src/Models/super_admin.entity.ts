@@ -23,4 +23,25 @@ export class super_admin {
   @Column({ length: 255, nullable: true })
   profile_picture_path: string;
 
+   @Column({ length: 250 })
+  role: string;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
+createdOn: Date;
+
+@Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
+updatedOn: Date;
+
+  @Column({length:50, nullable: true})
+  createdBy: string;
+
+  @Column({length:50, nullable: true})
+  updatedBy: string;
+
+  @Column({ type: 'boolean', default: null })
+  is_active: boolean;
+
+  
+
+
 }

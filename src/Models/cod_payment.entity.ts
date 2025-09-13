@@ -30,7 +30,7 @@ retrieved_amount: string;
 sender_name: string;
 
 @Column({length: 255, nullable: true })
-delivered_on:string
+delivered_on:string;
 
 @ManyToOne(() => Rider, (rider) => rider.codPayments)
 @JoinColumn({ name: 'rider_id' })

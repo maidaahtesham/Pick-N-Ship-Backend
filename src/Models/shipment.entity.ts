@@ -12,10 +12,7 @@ import { shipping_detail } from './shipping_detail.entity';
 export class Shipment {
   @PrimaryGeneratedColumn()
   id: number;
-
-@Column()
-courier_company_id: number;
-
+ 
  @Column()
   shipment_id_tag_no: string;
 

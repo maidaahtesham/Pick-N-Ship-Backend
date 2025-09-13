@@ -1,13 +1,13 @@
 import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { VendorService } from './vendor.service';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
-import { courier_company } from 'src/Models/courier_company.entity';
-import { Response } from 'src/ViewModel/response';
-import { vendorSignUpDTO } from 'src/ViewModel/vendorSignUpDTO.dto';
-import { vendorDetailsDTO } from 'src/ViewModel/vendorDetailsDTO.dto';
-import { company_document_dto } from 'src/ViewModel/company_document_dto';
-import { shipping_detail_dto } from 'src/ViewModel/shipping_detail_dto';
-import { Shipment } from 'src/Models/shipment.entity';
+import { courier_company } from '../Models/courier_company.entity';
+import { Response } from '../ViewModel/response';
+import { vendorSignUpDTO } from '../ViewModel/vendorSignUpDTO.dto';
+import { vendorDetailsDTO } from '../ViewModel/vendorDetailsDTO.dto';
+import { company_document_dto } from '../ViewModel/company_document_dto';
+import { shipping_detail_dto } from '../ViewModel/shipping_detail_dto';
+import { Shipment } from '../Models/shipment.entity';
 
 
 @UseGuards(JwtAuthGuard)

@@ -1,16 +1,16 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
-import { company_document } from 'src/Models/company_document.entity';
-import { courier_company } from 'src/Models/courier_company.entity';
-import { Shipment } from 'src/Models/shipment.entity';
-import { shipping_detail } from 'src/Models/shipping_detail.entity';
-import { vendor_user } from 'src/Models/vendor_user.entity';
-import { company_document_dto } from 'src/ViewModel/company_document_dto';
-import { Response } from 'src/ViewModel/response';
-import { shipping_detail_dto } from 'src/ViewModel/shipping_detail_dto';
-import { vendorDetailsDTO } from 'src/ViewModel/vendorDetailsDTO.dto';
-import { vendorSignUpDTO } from 'src/ViewModel/vendorSignUpDTO.dto';
+import { company_document } from '../Models/company_document.entity';
+import { courier_company } from '../Models/courier_company.entity';
+import { Shipment } from '../Models/shipment.entity';
+import { shipping_detail } from '../Models/shipping_detail.entity';
+import { vendor_user } from '../Models/vendor_user.entity';
+import { company_document_dto } from '../ViewModel/company_document_dto';
+import { Response } from '../ViewModel/response';
+import { shipping_detail_dto } from '../ViewModel/shipping_detail_dto';
+import { vendorDetailsDTO } from '../ViewModel/vendorDetailsDTO.dto';
+import { vendorSignUpDTO } from '../ViewModel/vendorSignUpDTO.dto';
 import { DataSource, Repository } from 'typeorm';
 
 @Injectable()
@@ -327,7 +327,7 @@ if (!company) {
     const resp= new Response();
     try {
       const shipments = await this.shipmentRepository.find({
-        where: { courier_company_id: data.company_id },
+      where: { courierCompany: { company_id: data.company_id } },  
         relations: ['rider', 'shipment_request', 'shipment_request.customer'],
       });
 

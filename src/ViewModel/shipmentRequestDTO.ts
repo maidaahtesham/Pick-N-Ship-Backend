@@ -1,8 +1,8 @@
-// src/ViewModel/shipment-request.dto.ts
+// ../ViewModel/shipment-request.dto.ts
 import { Transform } from 'class-transformer';
 import { IsEnum, IsNumber, IsString, Length, IsOptional, isDate, IS_DATE, IsDate, IsBoolean } from 'class-validator';
-import { courier_company } from 'src/Models/courier_company.entity';
-import { Rider } from 'src/Models/rider.entity';
+import { courier_company } from '../Models/courier_company.entity';
+import { Rider } from '../Models/rider.entity';
 import { JoinColumn, ManyToOne } from 'typeorm';
 
 enum ParcelType {

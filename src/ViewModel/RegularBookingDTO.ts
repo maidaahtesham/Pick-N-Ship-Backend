@@ -1,4 +1,4 @@
-// src/ViewModel/regular-booking.dto.ts
+// ../ViewModel/regular-booking.dto.ts
 import { IsEnum, IsNumber, IsString, Length, IsOptional, IsArray, Min, Max } from 'class-validator';
 import { Column } from 'typeorm';
 

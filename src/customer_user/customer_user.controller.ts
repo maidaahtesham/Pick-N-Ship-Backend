@@ -1,11 +1,11 @@
 import { Body, Controller, HttpCode, Inject, Post, UseGuards,Request } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 import { CustomerUserService } from './customer_user.service';
-import { customer_signup_dto } from 'src/ViewModel/customer_signup_dto';
-import { Response } from 'src/ViewModel/response';
+import { customer_signup_dto } from '../ViewModel/customer_signup_dto';
+import { Response } from '../ViewModel/response';
 import { JwtService } from '@nestjs/jwt';
-import { ShipmentRequestDTO } from 'src/ViewModel/shipmentRequestDTO';
-import { RegularBookingDTO } from 'src/ViewModel/RegularBookingDTO';
+import { ShipmentRequestDTO } from '../ViewModel/shipmentRequestDTO';
+import { RegularBookingDTO } from '../ViewModel/RegularBookingDTO';
 
 // @UseGuards(JwtAuthGuard)
 

@@ -1,5 +1,5 @@
 
-// src/Models/shipment_request.entity.ts
+// ../Models/shipment_request.entity.ts
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToOne, JoinColumn } from 'typeorm';
 import { courier_company } from './courier_company.entity';
 import { Customer } from './customer.entity';

@@ -1,4 +1,4 @@
-// src/models/ratings.entity.ts
+// ../Models/ratings.entity.ts
 
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
 import { Shipment } from './shipment.entity';

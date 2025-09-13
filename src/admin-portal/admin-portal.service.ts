@@ -2,17 +2,17 @@ import { Body, Injectable, InternalServerErrorException, NotFoundException, Unau
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs'; // ✅
 
-import { CodPayment } from 'src/Models/cod_payment.entity';
-import { company_document } from 'src/Models/company_document.entity';
-import { courier_company } from 'src/Models/courier_company.entity';
-import { Customer } from 'src/Models/customer.entity';
-import { Rider } from 'src/Models/rider.entity';
-import { Shipment } from 'src/Models/shipment.entity';
-import { shipping_detail } from 'src/Models/shipping_detail.entity';
+import { CodPayment } from '../Models/cod_payment.entity';
+import { company_document } from '../Models/company_document.entity';
+import { courier_company } from '../Models/courier_company.entity';
+import { Customer } from '../Models/customer.entity';
+import { Rider } from '../Models/rider.entity';
+import { Shipment } from '../Models/shipment.entity';
+import { shipping_detail } from '../Models/shipping_detail.entity';
 
-import { super_admin } from 'src/Models/super_admin.entity';
-import { edit_courier_company_dto } from 'src/ViewModel/edit_courier_company.dto';
-import { Response } from 'src/ViewModel/response';
+import { super_admin } from '../Models/super_admin.entity';
+import { edit_courier_company_dto } from '../ViewModel/edit_courier_company.dto';
+import { Response } from '../ViewModel/response';
 import { DataSource, ILike, Or, Repository } from 'typeorm';
 
 @Injectable()
@@ -519,7 +519,7 @@ async getAllJobs({ page, limit, status, search }) {
     const query = this.shipmentRepository
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.courierCompany', 'company')
-      .leftJoinAndSelect('s.rider', 'rider') // join rider
+      .leftJoinAndSelect('s.rider', 'rider')
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -536,6 +536,9 @@ async getAllJobs({ page, limit, status, search }) {
         { search: `%${search}%` },
       );
     }
+
+    // ORDER BY latest created shipments first (optional)
+    query.orderBy('s.createdOn', 'DESC');
 
     const [data, total] = await query.getManyAndCount();
 
@@ -560,6 +563,8 @@ async getAllJobs({ page, limit, status, search }) {
     };
   }
 }
+
+
 
 
 // async getShipmentOverview(id: number) {
