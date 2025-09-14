@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { courier_company } from './courier_company.entity';
 
 @Entity()
 export class super_admin {
@@ -26,6 +27,10 @@ export class super_admin {
    @Column({ length: 250 })
   role: string;
 
+ @ManyToOne(() => courier_company, (company) => company.superAdmins, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'company_id' })
+  company: courier_company;
+  
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
 

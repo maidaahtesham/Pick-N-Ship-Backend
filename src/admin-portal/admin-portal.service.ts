@@ -146,9 +146,16 @@ async getProfile(admin_id: number, token?: string): Promise<Response> {
 
 
 
-  async findByEmail(email: string): Promise<super_admin | null> {
-    return this.superAdminRepository.findOne({ where: { email } });
-  }
+  // async findByEmail(email: string): Promise<super_admin | null> {
+  //   return this.superAdminRepository.findOne({ where: { email } });
+  // }
+  async findByEmail(email: string): Promise<super_admin | null> { 
+  return this.superAdminRepository.findOne({
+    where: { email },
+    relations: ['company'],  
+  });
+}
+
 
   async validateSuperAdmin(email: string, password: string): Promise<any> {
     const user = await this.findByEmail(email);

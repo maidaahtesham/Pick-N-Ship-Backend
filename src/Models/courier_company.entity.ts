@@ -8,6 +8,7 @@ import { company_document } from './company_document.entity';
 import { shipping_detail } from './shipping_detail.entity';
 import { vendor_user } from './vendor_user.entity';
 import { Customer } from './customer.entity';
+import { super_admin } from './super_admin.entity';
 
 
 @Entity()
@@ -87,6 +88,7 @@ rejection_reason: string;
   @OneToMany(()=> Customer,(Customer)=> Customer.company , { nullable: true })
 customer: Customer[];
 
-
+@OneToMany(() => super_admin, (superAdmin) => superAdmin.company)
+superAdmins: super_admin[];
 }
 
