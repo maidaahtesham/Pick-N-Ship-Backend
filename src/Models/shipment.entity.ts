@@ -2,10 +2,10 @@ import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColum
 import { Rating } from './ratings.entity';
 import { courier_company } from './courier_company.entity';
 import { Rider } from './rider.entity';
-import { CodPayment } from './cod_payment.entity';
 import { Customer } from './customer.entity';
 import { shipment_request } from './shipment_request.entity';
 import { shipping_detail } from './shipping_detail.entity';
+import { CodPayment } from './cod_payment.entity';
 
 // Shipment Entity
 @Entity()

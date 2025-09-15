@@ -1,22 +1,25 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { courier_company } from './courier_company.entity';
 import { shipping_pricing } from './shipping_pricing.entity';
+import { company_çonveyance_pricing_details } from './company_çonveyance_pricing_details.entity';
 
 @Entity()
-export class shipping_detail {
-  @PrimaryGeneratedColumn()
-  shipping_id: number;
+export class company_çonveyance_details {
+
+@PrimaryGeneratedColumn()
+  id: number;
 
 
   @ManyToOne(() => courier_company, (company) => company.shipping_details)
   @JoinColumn({ name: 'company_id' })  
   company: courier_company;
 
-   @OneToMany(() => shipping_pricing, (pricing) => pricing.shipping, {
-    cascade: true,
-  })
-  pricing: shipping_pricing[];
- 
+  @OneToMany(() => company_çonveyance_pricing_details,
+    (pricing) => pricing.conveyance_detail,
+    { cascade: true }
+  )
+  pricing: company_çonveyance_pricing_details[];
+
   @Column({
     type: 'enum',
     enum: ['bike', 'van', 'truck'],
@@ -54,5 +57,4 @@ export class shipping_detail {
 
   @Column()
   is_active: boolean;
-
 }

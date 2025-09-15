@@ -2,8 +2,8 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColum
 import { Rating } from "./ratings.entity";
 import { shipment_request } from "./shipment_request.entity";
 import { Shipment } from "./shipment.entity";
-import { CodPayment } from "./cod_payment.entity";
 import { courier_company } from "./courier_company.entity";
+import { CodPayment } from "./cod_payment.entity";
 
 @Entity()
 export class Rider {

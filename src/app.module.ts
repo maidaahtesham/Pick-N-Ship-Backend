@@ -11,7 +11,7 @@ import { Rating } from './Models/ratings.entity';
 import { Rider } from './Models/rider.entity';
 import { Shipment } from './Models/shipment.entity';
 import { shipment_request } from './Models/shipment_request.entity';
-import { CodPayment } from './Models/cod_payment.entity';
+ 
 
 // Import Feature Modules
 import { AuthModule } from './auth/auth.module';
@@ -23,6 +23,10 @@ import { shipping_detail } from './Models/shipping_detail.entity';
 import { CustomerUserModule } from './customer_user/customer_user.module';
 import * as fs from 'fs';
 import * as path from 'path';
+import { shipping_pricing } from './Models/shipping_pricing.entity';
+import { CodPayment } from './Models/cod_payment.entity';
+import { company_çonveyance_details } from './Models/company_conveyance_details.entity';
+import { company_çonveyance_pricing_details } from './Models/company_çonveyance_pricing_details.entity';
 @Module({
   imports: [
     // Load environment variables globally
@@ -72,7 +76,10 @@ import * as path from 'path';
         CodPayment,
         vendor_user,
         company_document,
-        shipping_detail
+        shipping_detail,
+        shipping_pricing,
+        company_çonveyance_details,
+        company_çonveyance_pricing_details
       ],
       // migrations: ['dist/migrations/*.ts'],
 

@@ -7,10 +7,14 @@ import { Rating } from './Models/ratings.entity';
 import { Rider } from './Models/rider.entity';
 import { Shipment } from './Models/shipment.entity';
 import { shipment_request } from './Models/shipment_request.entity';
-import { CodPayment } from './Models/cod_payment.entity';
+
 import { vendor_user } from './Models/vendor_user.entity';
 import { company_document } from './Models/company_document.entity';
 import { shipping_detail } from './Models/shipping_detail.entity';
+import { shipping_pricing } from './Models/shipping_pricing.entity';
+import { CodPayment } from './Models/cod_payment.entity';
+import { company_çonveyance_details } from './Models/company_conveyance_details.entity';
+import { company_çonveyance_pricing_details } from './Models/company_çonveyance_pricing_details.entity';
 
 config(); // load .env
 
@@ -32,7 +36,12 @@ CodPayment,
 courier_company,
 vendor_user,
 company_document,
-shipping_detail
+shipping_detail,
+shipping_pricing,
+company_çonveyance_details,
+company_çonveyance_pricing_details
+
+
 
   ],
   migrations: ['src/migrations/*.ts'],

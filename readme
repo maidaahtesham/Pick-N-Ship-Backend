@@ -1,2 +1,24 @@
 # npm run migration:generate -- src/migrations/addcolumnsinsuperadmintable
 # npm run migration:run
+
+
+
+
+## Go to backend folder
+# cd /home/ec2-user/Pick-N-Ship-Backend
+
+# # Install dependencies
+# npm install --legacy-peer-deps
+
+# # Build project (creates dist/)
+# npm run build
+
+# # Restart PM2 with dist/main.js
+# pm2 start dist/main.js --name Pick-N-Ship-Backend
+# pm2 save
+
+# pm2 restart Pick-N-Ship-Backend
+# pm2 logs
+# pm2 list
+# pm2 stop all
+# pm2 delete all

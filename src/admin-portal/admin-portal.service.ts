@@ -2,7 +2,7 @@ import { Body, Injectable, InternalServerErrorException, NotFoundException, Unau
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs'; // ✅
 
-import { CodPayment } from '../Models/cod_payment.entity';
+
 import { company_document } from '../Models/company_document.entity';
 import { courier_company } from '../Models/courier_company.entity';
 import { Customer } from '../Models/customer.entity';
@@ -16,6 +16,7 @@ import { Response } from '../ViewModel/response';
 import { DataSource, ILike, Or, Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
+import { CodPayment } from 'src/Models/cod_payment.entity';
 @Injectable()
 export class AdminPortalService {
   constructor(
@@ -263,21 +264,126 @@ async getallCompaniesdetails(body: any): Promise<Response> {
 }
 
 
+// async getCompany(companyId: number): Promise<Response> {
+//   const resp=new Response();
+
+//   try {
+//     const company = await this.companyRepository.findOne({
+//       where: { company_id: companyId, status: true },
+//       relations: ['ratings','vendorUser', 'company_document', 'shipping_details'],
+
+//     });
+//   if (company) {
+//       // Fetch email_address from vendor_user
+//       // const email_address = company.vendorUser ? company.vendorUser : null;
+//       const email_address = company.vendorUser?.[0]?.email_address || null;
+
+//    const documentDetails: Partial<company_document> = company.company_document?.[0] || {};
+//       const result = {
+//         company: {
+//           company_id: company.company_id,
+//           company_name: company.company_name,
+//           status: company.status,
+//           logo: company.logo,
+//           company_phone_number: company.company_phone_number,
+//           email_address: company.company_email_address || email_address,
+//           city: company.city,
+//           trade_license_number: documentDetails.trade_license_number,
+//           trade_license_expiry_date: documentDetails.trade_license_expiry_date,
+//           establishment_card: documentDetails.establishment_card,
+//           trade_license_document_path: documentDetails.trade_license_document_path,
+//           company_document_path: documentDetails.company_document_path,
+//         },
+//         ratings: company.ratings.map(rating => {
+//           const avg = (
+//             (parseFloat(rating.rider_behavior_score) +
+//              parseFloat(rating.on_time_delivery_score) +
+//              parseFloat(rating.affordability_score)) / 3
+//           ).toFixed(1); // round to 1 decimal
+
+//           return {
+//             rating_id: rating.id,
+//             rating_value: avg,
+//             rider_behavior_score: rating.rider_behavior_score,
+//             on_time_delivery_score: rating.on_time_delivery_score,
+//             affordability_score: rating.affordability_score,
+//             review: rating.review,
+//             created_at: rating.created_at,
+//           };
+//         }),
+//       };
+
+//       resp.success = true;
+//       resp.httpResponseCode = 200;
+//       resp.customResponseCode = '200 OK';
+//       resp.message = 'Get Company Details';
+//       resp.result = result;
+//       resp.count = 1; // Single company record
+//       return resp;
+//     }
+
+//     resp.success = false;
+//     resp.message = 'Company record does not exist';
+//     return resp;
+
+//   } catch (ex) {
+//     resp.success = false;
+//     resp.httpResponseCode = 400;
+//     resp.customResponseCode = '400 BadRequest';
+//     resp.message = `Failed to Get Company : ${ex.message}`;
+//     resp.result = null;
+//     return resp;
+//   }
+// }
+
 async getCompany(companyId: number): Promise<Response> {
-  const resp=new Response();
+  const resp = new Response();
 
   try {
     const company = await this.companyRepository.findOne({
       where: { company_id: companyId, status: true },
-      relations: ['ratings','vendorUser', 'company_document', 'shipping_details'],
-
+      relations: [
+        'ratings',
+        'vendorUser',
+        'company_document',
+        'company_conveyance_details',
+        'company_conveyance_details.pricing', // ✅ include pricing relation
+      ],
     });
-  if (company) {
-      // Fetch email_address from vendor_user
-      // const email_address = company.vendorUser ? company.vendorUser : null;
-      const email_address = company.vendorUser?.[0]?.email_address || null;
 
-   const documentDetails: Partial<company_document> = company.company_document?.[0] || {};
+    if (company) {
+      const email_address = company.vendorUser?.[0]?.email_address || null;
+      const documentDetails: Partial<company_document> = company.company_document?.[0] || {};
+
+      // ✅ Group conveyance details by type
+      const conveyanceGrouped = company.company_conveyance_details.reduce((acc, detail) => {
+        if (!acc[detail.conveyance_types]) {
+          acc[detail.conveyance_types] = [];
+        }
+
+        // Pricing list
+        const pricingList = detail.pricing?.map(p => ({
+          pricing_id: p.pricing_id,
+          size: p.size,
+          weight: p.weight,
+          width: p.width,
+          length: p.length,
+          height: p.height,
+          baseFare: p.baseFare,
+          pricePerKm: p.pricePerKm,
+        })) || [];
+
+        acc[detail.conveyance_types].push({
+          conveyance_id: detail.id,
+          commission_type: detail.commission_type,
+          commission_rate: detail.commission_rate,
+          is_active: detail.is_active,
+          pricing: pricingList,
+        });
+
+        return acc;
+      }, {} as Record<string, any[]>);
+
       const result = {
         company: {
           company_id: company.company_id,
@@ -296,9 +402,9 @@ async getCompany(companyId: number): Promise<Response> {
         ratings: company.ratings.map(rating => {
           const avg = (
             (parseFloat(rating.rider_behavior_score) +
-             parseFloat(rating.on_time_delivery_score) +
-             parseFloat(rating.affordability_score)) / 3
-          ).toFixed(1); // round to 1 decimal
+              parseFloat(rating.on_time_delivery_score) +
+              parseFloat(rating.affordability_score)) / 3
+          ).toFixed(1);
 
           return {
             rating_id: rating.id,
@@ -310,6 +416,7 @@ async getCompany(companyId: number): Promise<Response> {
             created_at: rating.created_at,
           };
         }),
+        conveyanceDetails: conveyanceGrouped,
       };
 
       resp.success = true;
@@ -317,14 +424,13 @@ async getCompany(companyId: number): Promise<Response> {
       resp.customResponseCode = '200 OK';
       resp.message = 'Get Company Details';
       resp.result = result;
-      resp.count = 1; // Single company record
+      resp.count = 1;
       return resp;
     }
 
     resp.success = false;
     resp.message = 'Company record does not exist';
     return resp;
-
   } catch (ex) {
     resp.success = false;
     resp.httpResponseCode = 400;
@@ -334,6 +440,8 @@ async getCompany(companyId: number): Promise<Response> {
     return resp;
   }
 }
+
+
 
   async editCompany(data: edit_courier_company_dto): Promise<Response> {
     const resp=new Response();

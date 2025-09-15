@@ -3,12 +3,13 @@ import { Rating } from './ratings.entity';
 import { shipment_request } from './shipment_request.entity';
 import { text } from 'stream/consumers';
 import { Shipment } from './shipment.entity';
-import { CodPayment } from './cod_payment.entity';
 import { company_document } from './company_document.entity';
 import { shipping_detail } from './shipping_detail.entity';
 import { vendor_user } from './vendor_user.entity';
 import { Customer } from './customer.entity';
 import { super_admin } from './super_admin.entity';
+import { CodPayment } from './cod_payment.entity';
+import { company_çonveyance_details } from './company_conveyance_details.entity';
 
 
 @Entity()
@@ -90,5 +91,11 @@ customer: Customer[];
 
 @OneToMany(() => super_admin, (superAdmin) => superAdmin.company)
 superAdmins: super_admin[];
+
+@OneToMany(() => company_çonveyance_details, (conveyance) => conveyance.company)
+  company_conveyance_details: company_çonveyance_details[];
+
+
+
 }
 

@@ -8,7 +8,7 @@ import { Customer } from '../Models/customer.entity';
 import { Rider } from '../Models/rider.entity';
 import { shipment_request } from '../Models/shipment_request.entity';
 import { Shipment } from '../Models/shipment.entity';
-import { CodPayment } from '../Models/cod_payment.entity';
+import { CodPayment } from 'src/Models/cod_payment.entity';
 
 // Export the DataSource instance for CLI use
 export const AppDataSource = new DataSource({
