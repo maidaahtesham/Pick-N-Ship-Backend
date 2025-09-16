@@ -36,12 +36,12 @@ export class company_çonveyance_details {
   // commission_rate: string;
 
 
-  @Column({ type: 'varchar', nullable: true })
-  commission_rate: string;
+  // @Column({ type: 'varchar', nullable: true })
+  // commission_rate: string;
 
 
-    @Column({ type: 'varchar', nullable: true })
-  commission_type: string;
+  //   @Column({ type: 'varchar', nullable: true })
+  // commission_type: string;
   
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
   createdOn: Date;

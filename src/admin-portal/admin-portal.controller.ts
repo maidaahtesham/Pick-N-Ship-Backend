@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards, Req, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
 import { AdminPortalService } from './admin-portal.service';
 import { edit_courier_company_dto } from '../ViewModel/edit_courier_company.dto';
 import { Response } from '../ViewModel/response';
@@ -57,7 +57,7 @@ async getCompany(@Body() body: { companyId: number }): Promise<Response> {
     return await this.adminPortalService.deleteCompany(companyId);
   }
 
-@Post('update-company-status')
+@Post('update-cPreadompany-status')
 updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'accepted' | 'rejected'; rejection_reason?: string }) {
   return this.adminPortalService.updateCompanyStatus(data.company_id, data.status, data.rejection_reason);
 }
@@ -65,17 +65,22 @@ updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'acce
   @Post('set-commission')
   setCommission(@Body() body: { company_id: number; commission_type: string; commission_rate?: string }) {
     return this.adminPortalService.setCommission(body);
-  }
+  } 
 
+@Post('get-ratings')
+@HttpCode(200)
+async getRatings(@Body() body: { companyId: number; page?: number; limit?: number }, @Res() response): Promise<Response> {
+  const { companyId, page = 1, limit = 10 } = body;
+  const result = await this.adminPortalService.getRatings(companyId, page, limit);
+  return response.status(result.httpResponseCode).json(result);
+}
  
-
   @Post('search-companies')
 searchCompanies(@Body() body: { company_name?: string; city?: string }) {
   return this.adminPortalService.searchCompanies(body.company_name, body.city);
 }
 
 
- 
 @Post('get-all-jobs')
 getAllJobs(@Body() body: { page?: number; limit?: number; status?: string; search?: string }) {
   const { page = 1, limit = 10, status, search } = body;

@@ -10,25 +10,25 @@ export async function seedRatings(ds: DataSource) {
     return;
 }
 
-  const rating = repo.create({
-    id: 1,
-    stars: 5,
-    shipment: { shipment_id: 1 } as any,
-    customer: { customer_id: 1 } as any,
-    rider: { rider_id: 1 } as any,
-    company: { company_id: 1 } as any,
-    rider_behavior_score: "Excellent",
-    on_time_delivery_score: "On time",
-    affordability_score: "Affordable",
-    review: "Great service!",
-    createdBy: "system",
-    updatedBy: "system",
-    created_at: new Date(),
-    createdOn: new Date(),
-    updatedOn: new Date(),
-    status: true,
-  });
+  // const rating = repo.create({
+  //   id: 1,
+  //   stars: 5,
+  //   shipment: { shipment_id: 1 } as any,
+  //   customer: { customer_id: 1 } as any,
+  //   rider: { rider_id: 1 } as any,
+  //   company: { company_id: 1 } as any,
+  //   rider_behavior_score: "Excellent",
+  //   on_time_delivery_score: "On time",
+  //   affordability_score: "Affordable",
+  //   review: "Great service!",
+  //   createdBy: "system",
+  //   updatedBy: "system",
+  //   created_at: new Date(),
+  //   createdOn: new Date(),
+  //   updatedOn: new Date(),
+  //   status: true,
+  // });
 
-  await repo.save(rating);
-  console.log("✅ Rating seeded!");
+  // await repo.save(rating);
+  // console.log("✅ Rating seeded!");
 }

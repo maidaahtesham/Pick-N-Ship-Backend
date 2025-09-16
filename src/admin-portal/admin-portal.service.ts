@@ -12,15 +12,20 @@ import { shipping_detail } from '../Models/shipping_detail.entity';
 
 import { super_admin } from '../Models/super_admin.entity';
 import { edit_courier_company_dto } from '../ViewModel/edit_courier_company.dto';
-import { Response } from '../ViewModel/response';
+import { PaginatedResponse, Response } from '../ViewModel/response';
 import { DataSource, ILike, Or, Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CodPayment } from 'src/Models/cod_payment.entity';
+import { company_commission_rate } from 'src/Models/company_commission_rate.entity';
+import { Rating } from 'src/Models/ratings.entity';
 @Injectable()
 export class AdminPortalService {
   constructor(
 private dataSource: DataSource,
+    @InjectRepository(Rating)
+    private ratingRepository: Repository<Rating>,
+
   @InjectRepository(courier_company)
   private companyRepository: Repository<courier_company>,
 
@@ -37,10 +42,11 @@ private dataSource: DataSource,
 
   
   @InjectRepository(shipping_detail)
-  private shipmentDetailsRepository: Repository<shipping_detail>
+  private shipmentDetailsRepository: Repository<shipping_detail>,
 
-  
 
+@InjectRepository(company_commission_rate)
+  private companyCommissionRateRepository: Repository<company_commission_rate>
 ) {}
 
 
@@ -347,8 +353,9 @@ async getCompany(companyId: number): Promise<Response> {
         'vendorUser',
         'company_document',
         'company_conveyance_details',
-        'company_conveyance_details.pricing', // ✅ include pricing relation
-      ],
+        'company_conveyance_details.pricing',
+        'commissionRates'     
+       ],
     });
 
     if (company) {
@@ -375,8 +382,7 @@ async getCompany(companyId: number): Promise<Response> {
 
         acc[detail.conveyance_types].push({
           conveyance_id: detail.id,
-          commission_type: detail.commission_type,
-          commission_rate: detail.commission_rate,
+
           is_active: detail.is_active,
           pricing: pricingList,
         });
@@ -384,6 +390,11 @@ async getCompany(companyId: number): Promise<Response> {
         return acc;
       }, {} as Record<string, any[]>);
 
+const getRatingLabel = (score: number): string => {
+  if (score >= 80) return 'Great';
+  if (score >= 50) return 'Good';
+  return 'Poor';
+};
       const result = {
         company: {
           company_id: company.company_id,
@@ -398,24 +409,38 @@ async getCompany(companyId: number): Promise<Response> {
           establishment_card: documentDetails.establishment_card,
           trade_license_document_path: documentDetails.trade_license_document_path,
           company_document_path: documentDetails.company_document_path,
+          
         },
-        ratings: company.ratings.map(rating => {
-          const avg = (
-            (parseFloat(rating.rider_behavior_score) +
-              parseFloat(rating.on_time_delivery_score) +
-              parseFloat(rating.affordability_score)) / 3
-          ).toFixed(1);
+ratings: company.ratings.map(rating => {
+    const avg = (
+      (rating.rider_behavior_score +
+        rating.on_time_delivery_score +
+        rating.affordability_score) / 3 / 20 // Convert 0-100 to 0-5 scale
+    ).toFixed(1);
 
+    return {
+      rating_id: rating.id,
+      rating_value: avg,
+      rider_behavior_score: `${rating.rider_behavior_score}% (${getRatingLabel(rating.rider_behavior_score)})`,
+      on_time_delivery_score: `${rating.on_time_delivery_score}% (${getRatingLabel(rating.on_time_delivery_score)})`,
+      affordability_score: `${rating.affordability_score}% (${getRatingLabel(rating.affordability_score)})`,
+      review: rating.review,
+      created_at: rating.created_at,
+      customer_name: rating.customer?.firstname || null, // Assuming Customer entity has a 'name' field
+    };
+  }),
+        company_commission_rate: company.commissionRates.map(company_commission_rate=> {
           return {
-            rating_id: rating.id,
-            rating_value: avg,
-            rider_behavior_score: rating.rider_behavior_score,
-            on_time_delivery_score: rating.on_time_delivery_score,
-            affordability_score: rating.affordability_score,
-            review: rating.review,
-            created_at: rating.created_at,
+            id: company_commission_rate.id,
+            commission_type: company_commission_rate.commission_type,
+            commission_rate: company_commission_rate.commission_rate,
+            createdOn: company_commission_rate.createdOn,
+            updatedOn: company_commission_rate.updatedOn,
           };
-        }),
+
+        }) ,
+
+
         conveyanceDetails: conveyanceGrouped,
       };
 
@@ -548,21 +573,26 @@ async updateCompanyStatus(company_id: number, status: 'pending'|'accepted' | 're
 }
 
 
-async setCommission({ company_id, commission_type, commission_rate }: any): Promise<Response> {
-    const resp= new Response();
+async setCommission({ company_id, commission_type, commission_rate }: { company_id: number; commission_type: string; commission_rate?: string }): Promise<Response> {
+  const resp = new Response();
 
   try {
-    // Check if shipping details exist for the company
-    const existingShippingDetail = await this.shipmentDetailsRepository.findOne({ where: { company: { company_id } } });
+    // Check if a commission rate exists for the company and commission type
+    const existingCommission = await this.companyCommissionRateRepository.findOne({
+      where: { company: { company_id } }, // Use the relation
+    });
 
-    let updatedCommissionRate = "0";
+    let updatedCommissionRate = "0%";
     // Determine the commission rate based on commission_type
-    if (commission_type === 'standard') updatedCommissionRate = '10%';
-    else if (commission_type === 'sme') updatedCommissionRate = '5%';
-    else if (commission_type === 'custom' && commission_rate) updatedCommissionRate = commission_rate;
+    if (commission_type === 'standard') updatedCommissionRate = "10%";
+    else if (commission_type === 'sme') updatedCommissionRate = "5%";
+    else if (commission_type === 'custom' && commission_rate) {
+      // Ensure commission_rate is a valid number, default to 0 if invalid
+      updatedCommissionRate = commission_rate || "" + "%";
+    }
 
-    if (!existingShippingDetail) {
-      // Create new shipping detail if it doesn't exist
+    if (!existingCommission) {
+      // Create new commission rate if it doesn't exist
       const company = await this.companyRepository.findOne({ where: { company_id } });
       if (!company) {
         resp.message = 'Company not found';
@@ -571,31 +601,38 @@ async setCommission({ company_id, commission_type, commission_rate }: any): Prom
         return resp;
       }
 
-      const newShippingDetail = this.shipmentDetailsRepository.create({
-        company,
-        conveyance_types: 'bike', // Default value, adjust as needed
-        conveyance_details: '',   // Default value, adjust as needed
+      const newCommissionRate = this.companyCommissionRateRepository.create({
+        commission_type,
         commission_rate: updatedCommissionRate,
+        createdOn: new Date(),
+        updatedOn: new Date(),
+        createdBy: 'admin', // Adjust as needed
+        updatedBy: 'admin', // Adjust as needed
+        status: true,
+        company, // Assign the Company entity
       });
-      await this.shipmentDetailsRepository.save(newShippingDetail);
+      await this.companyCommissionRateRepository.save(newCommissionRate);
       resp.success = true;
-      resp.message = 'Commission set and shipping detail created successfully';
+      resp.message = 'Commission rate set successfully';
       resp.httpResponseCode = 201;
       resp.customResponseCode = '201 Created';
-      resp.result = { company_id, commission_rate: updatedCommissionRate };
+      resp.result = { company_id, commission_type, commission_rate: updatedCommissionRate };
     } else {
-      // Update existing shipping detail
-      await this.shipmentDetailsRepository.update({ shipping_id: existingShippingDetail.shipping_id }, { commission_rate: updatedCommissionRate });
+      // Update existing commission rate
+      await this.companyCommissionRateRepository.update(
+        { company: { company_id } }, // Use the relation
+        { commission_rate: updatedCommissionRate, updatedOn: new Date(), updatedBy: 'admin', status: true }
+      );
       resp.success = true;
-      resp.message = 'Commission updated successfully';
+      resp.message = 'Commission rate updated successfully';
       resp.httpResponseCode = 200;
       resp.customResponseCode = '200 OK';
-      resp.result = { company_id, commission_rate: updatedCommissionRate };
+      resp.result = { company_id, commission_type, commission_rate: updatedCommissionRate };
     }
 
     return resp;
   } catch (ex) {
-    resp.message = `Failed to set commission : ${ex.message}`;
+    resp.message = `Failed to set commission: ${ex.message}`;
     resp.httpResponseCode = 400;
     resp.customResponseCode = '400 BadRequest';
     return resp;
@@ -646,7 +683,77 @@ async searchCompanies(company_name?: string, city?: string): Promise<Response> {
     return resp;
   }
 }
+async getRatings(companyId: number, page: number = 1, limit: number = 10): Promise<Response> {
+  const resp = new Response();
+  const skip = (page - 1) * limit;
 
+  try {
+    const [ratings, total] = await this.ratingRepository
+      .createQueryBuilder('rating')
+      .leftJoinAndSelect('rating.customer', 'customer', 'customer.status = :status', { status: true })
+      .leftJoinAndSelect('rating.rider', 'rider', 'rider.status = :status', { status: true })
+      .leftJoinAndSelect('rating.shipment', 'shipment', 'shipment.status = :status', { status: true })
+      .where('rating.company_id = :companyId AND rating.status = :status', { companyId, status: true })
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    if (ratings.length > 0) {
+      const getRatingLabel = (score: number): string => {
+        if (score >= 80) return 'Great';
+        if (score >= 50) return 'Good';
+        return 'Poor';
+      };
+
+      const result = {
+        ratings: ratings.map(rating => {
+          const avg = (
+            (rating.rider_behavior_score +
+              rating.on_time_delivery_score +
+              rating.affordability_score) / 3 / 20
+          ).toFixed(1);
+
+          return {
+            rating_id: rating.id,
+            rating_value: avg,
+            rider_behavior_score: `${rating.rider_behavior_score}% (${getRatingLabel(rating.rider_behavior_score)})`,
+            on_time_delivery_score: `${rating.on_time_delivery_score}% (${getRatingLabel(rating.on_time_delivery_score)})`,
+            affordability_score: `${rating.affordability_score}% (${getRatingLabel(rating.affordability_score)})`,
+            review: rating.review || 'No review provided',
+            created_at: rating.created_at,
+            customer_name: rating.customer?.firstname || null,
+            rider_name: rating.rider?.rider_name || null,
+          };
+        }),
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+
+      resp.success = true;
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      resp.message = 'Ratings retrieved successfully';
+      resp.result = result;
+      resp.count = total;
+      return resp;
+    }
+
+    resp.success = false;
+    resp.message = 'No ratings found for this company';
+    return resp;
+  } catch (ex) {
+    resp.success = false;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 BadRequest';
+    resp.message = `Failed to retrieve ratings: ${ex.message}`;
+    resp.result = null;
+    return resp;
+  }
+}
 
 // async getAllJobs({ page, limit, status, search }) {
 //   const query = this.shipmentRepository

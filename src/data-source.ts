@@ -15,6 +15,7 @@ import { shipping_pricing } from './Models/shipping_pricing.entity';
 import { CodPayment } from './Models/cod_payment.entity';
 import { company_çonveyance_details } from './Models/company_conveyance_details.entity';
 import { company_çonveyance_pricing_details } from './Models/company_çonveyance_pricing_details.entity';
+import { company_commission_rate } from './Models/company_commission_rate.entity';
 
 config(); // load .env
 
@@ -39,7 +40,8 @@ company_document,
 shipping_detail,
 shipping_pricing,
 company_çonveyance_details,
-company_çonveyance_pricing_details
+company_çonveyance_pricing_details,
+company_commission_rate
 
 
 

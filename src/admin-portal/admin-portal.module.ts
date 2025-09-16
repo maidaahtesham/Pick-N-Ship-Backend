@@ -13,9 +13,10 @@ import { shipping_pricing } from 'src/Models/shipping_pricing.entity';
 import { CodPayment } from 'src/Models/cod_payment.entity';
 import { company_çonveyance_details } from 'src/Models/company_conveyance_details.entity';
 import { company_çonveyance_pricing_details } from 'src/Models/company_çonveyance_pricing_details.entity';
+import { company_commission_rate } from 'src/Models/company_commission_rate.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,shipping_detail, Rider,Rating,shipping_pricing,company_çonveyance_details,company_çonveyance_pricing_details])],
+    imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,shipping_detail, Rider,Rating,shipping_pricing,company_çonveyance_details,company_çonveyance_pricing_details, company_commission_rate])],
   controllers: [AdminPortalController],
   providers: [AdminPortalService],
    exports: [AdminPortalService],

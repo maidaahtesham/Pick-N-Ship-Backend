@@ -10,6 +10,7 @@ import { Customer } from './customer.entity';
 import { super_admin } from './super_admin.entity';
 import { CodPayment } from './cod_payment.entity';
 import { company_çonveyance_details } from './company_conveyance_details.entity';
+import { company_commission_rate } from './company_commission_rate.entity';
 
 
 @Entity()
@@ -45,7 +46,7 @@ export class courier_company {
   registeration_date: string;
 
    @Column({ length: 20, nullable: true })
-  registeration_status: string;
+  registeration_status: string;   
 
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
@@ -65,8 +66,9 @@ status: boolean;
 @Column({ type: 'text', nullable: true })
 rejection_reason: string;
 
-  @OneToMany(() => Rating, (rating) => rating.company)
+  @OneToMany(() => Rating, (rating) => rating.company, { nullable: true })
     ratings: Rating[];
+    
   @OneToMany(() => shipment_request, (shipment_request) => shipment_request.company)
     shipment_request: shipment_request[];
 
@@ -95,7 +97,8 @@ superAdmins: super_admin[];
 @OneToMany(() => company_çonveyance_details, (conveyance) => conveyance.company)
   company_conveyance_details: company_çonveyance_details[];
 
-
+@OneToMany(() => company_commission_rate, (commission) => commission.company)
+commissionRates: company_commission_rate[];
 
 }
 

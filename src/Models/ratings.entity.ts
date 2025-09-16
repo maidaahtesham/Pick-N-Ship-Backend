@@ -12,7 +12,7 @@ export class Rating {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'int' })  // 1 to 5
+  @Column({ type: 'int' ,nullable:true })  // 1 to 5
   stars: number;
 
 @ManyToOne(() => Shipment, (shipment) => shipment.ratings, { onDelete: 'CASCADE' })
@@ -31,14 +31,14 @@ export class Rating {
   @JoinColumn({ name: 'company_id' })
   company: courier_company;
 
-  @Column('text')
-  rider_behavior_score: string;
+ @Column({ type: 'decimal', precision: 5, scale: 2 ,nullable:true}) // Store as 0-100
+  rider_behavior_score: number;
 
-  @Column('text')
-  on_time_delivery_score: string;
+  @Column({ type: 'decimal', precision: 5, scale: 2 ,nullable:true}) // Store as 0-100
+  on_time_delivery_score: number;
 
-  @Column('text')
-  affordability_score: string;
+  @Column({ type: 'decimal', precision: 5, scale: 2 , nullable:true}) // Store as 0-100
+  affordability_score: number;
 
   @Column({ nullable: true })
   review: string;
@@ -46,10 +46,10 @@ export class Rating {
   @CreateDateColumn()
   created_at: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: true })
 createdOn: Date;
 
-@Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
+@Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: true })
 updatedOn: Date;
 
   @Column({length:50, nullable: true})
@@ -58,7 +58,7 @@ updatedOn: Date;
   @Column({length:50, nullable: true})
   updatedBy: string;
 
-@Column({ type: 'boolean', default: null })
+@Column({ type: 'boolean', default: true })
 status: boolean;
 
 
