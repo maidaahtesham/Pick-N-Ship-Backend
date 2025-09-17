@@ -3,7 +3,7 @@ import { courier_company } from './courier_company.entity';
 import { shipping_pricing } from './shipping_pricing.entity';
 import { company_çonveyance_pricing_details } from './company_çonveyance_pricing_details.entity';
 
-@Entity()
+@Entity('company_commission_rate')
 export class company_commission_rate {
 
 @PrimaryGeneratedColumn()

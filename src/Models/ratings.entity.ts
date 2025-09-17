@@ -12,7 +12,7 @@ export class Rating {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'int' ,nullable:true })  // 1 to 5
+  @Column({ type: 'decimal' ,precision: 5, scale: 2 ,nullable:true })  // 1 to 5
   stars: number;
 
 @ManyToOne(() => Shipment, (shipment) => shipment.ratings, { onDelete: 'CASCADE' })

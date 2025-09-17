@@ -349,8 +349,7 @@ async getCompany(companyId: number): Promise<Response> {
     const company = await this.companyRepository.findOne({
       where: { company_id: companyId, status: true },
       relations: [
-        'ratings',
-        'vendorUser',
+         'vendorUser',
         'company_document',
         'company_conveyance_details',
         'company_conveyance_details.pricing',
@@ -390,11 +389,11 @@ async getCompany(companyId: number): Promise<Response> {
         return acc;
       }, {} as Record<string, any[]>);
 
-const getRatingLabel = (score: number): string => {
-  if (score >= 80) return 'Great';
-  if (score >= 50) return 'Good';
-  return 'Poor';
-};
+// const getRatingLabel = (score: number): string => {
+//   if (score >= 80) return 'Great';
+//   if (score >= 50) return 'Good';
+//   return 'Poor';
+// };
       const result = {
         company: {
           company_id: company.company_id,
@@ -411,24 +410,24 @@ const getRatingLabel = (score: number): string => {
           company_document_path: documentDetails.company_document_path,
           
         },
-ratings: company.ratings.map(rating => {
-    const avg = (
-      (rating.rider_behavior_score +
-        rating.on_time_delivery_score +
-        rating.affordability_score) / 3 / 20 // Convert 0-100 to 0-5 scale
-    ).toFixed(1);
+// ratings: company.ratings.map(rating => {
+//     const avg = (
+//       (rating.rider_behavior_score +
+//         rating.on_time_delivery_score +
+//         rating.affordability_score) / 3 / 20 // Convert 0-100 to 0-5 scale
+//     ).toFixed(1);
 
-    return {
-      rating_id: rating.id,
-      rating_value: avg,
-      rider_behavior_score: `${rating.rider_behavior_score}% (${getRatingLabel(rating.rider_behavior_score)})`,
-      on_time_delivery_score: `${rating.on_time_delivery_score}% (${getRatingLabel(rating.on_time_delivery_score)})`,
-      affordability_score: `${rating.affordability_score}% (${getRatingLabel(rating.affordability_score)})`,
-      review: rating.review,
-      created_at: rating.created_at,
-      customer_name: rating.customer?.firstname || null, // Assuming Customer entity has a 'name' field
-    };
-  }),
+//     return {
+//       rating_id: rating.id,
+//       rating_value: avg,
+//       rider_behavior_score: `${rating.rider_behavior_score}% (${getRatingLabel(rating.rider_behavior_score)})`,
+//       on_time_delivery_score: `${rating.on_time_delivery_score}% (${getRatingLabel(rating.on_time_delivery_score)})`,
+//       affordability_score: `${rating.affordability_score}% (${getRatingLabel(rating.affordability_score)})`,
+//       review: rating.review,
+//       created_at: rating.created_at,
+//       customer_name: rating.customer?.firstname || null, // Assuming Customer entity has a 'name' field
+//     };
+//   }),
         company_commission_rate: company.commissionRates.map(company_commission_rate=> {
           return {
             id: company_commission_rate.id,
@@ -688,15 +687,28 @@ async getRatings(companyId: number, page: number = 1, limit: number = 10): Promi
   const skip = (page - 1) * limit;
 
   try {
-    const [ratings, total] = await this.ratingRepository
+    // 1) Individual ratings with pagination
+ const [ratings, total] = await this.ratingRepository
+  .createQueryBuilder('rating')
+  .leftJoinAndSelect('rating.customer', 'customer')
+  .leftJoinAndSelect('rating.rider', 'rider')
+  .leftJoin('rating.shipment', 'shipment')
+  .where('rating.company_id = :companyId AND rating.status = :status', { companyId, status: true })
+  .skip(skip)
+  .take(limit)
+  .getManyAndCount();
+
+
+    // 2) Overall aggregation for company
+    const overall = await this.ratingRepository
       .createQueryBuilder('rating')
-      .leftJoinAndSelect('rating.customer', 'customer', 'customer.status = :status', { status: true })
-      .leftJoinAndSelect('rating.rider', 'rider', 'rider.status = :status', { status: true })
-      .leftJoinAndSelect('rating.shipment', 'shipment', 'shipment.status = :status', { status: true })
+      .select('AVG(rating.stars)', 'avg_stars')
+      .addSelect('AVG(rating.rider_behavior_score)', 'avg_rider_behavior')
+      .addSelect('AVG(rating.on_time_delivery_score)', 'avg_on_time_delivery')
+      .addSelect('AVG(rating.affordability_score)', 'avg_affordability')
+      .addSelect('COUNT(rating.id)', 'total_reviews')
       .where('rating.company_id = :companyId AND rating.status = :status', { companyId, status: true })
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+      .getRawOne();
 
     if (ratings.length > 0) {
       const getRatingLabel = (score: number): string => {
@@ -706,25 +718,24 @@ async getRatings(companyId: number, page: number = 1, limit: number = 10): Promi
       };
 
       const result = {
-        ratings: ratings.map(rating => {
-          const avg = (
-            (rating.rider_behavior_score +
-              rating.on_time_delivery_score +
-              rating.affordability_score) / 3 / 20
-          ).toFixed(1);
-
-          return {
-            rating_id: rating.id,
-            rating_value: avg,
-            rider_behavior_score: `${rating.rider_behavior_score}% (${getRatingLabel(rating.rider_behavior_score)})`,
-            on_time_delivery_score: `${rating.on_time_delivery_score}% (${getRatingLabel(rating.on_time_delivery_score)})`,
-            affordability_score: `${rating.affordability_score}% (${getRatingLabel(rating.affordability_score)})`,
-            review: rating.review || 'No review provided',
-            created_at: rating.created_at,
-            customer_name: rating.customer?.firstname || null,
-            rider_name: rating.rider?.rider_name || null,
-          };
-        }),
+        overall: {
+          avgStars: overall.avg_stars ? parseFloat(overall.avg_stars).toFixed(1) : "0.0",
+          avgRiderBehavior: overall.avg_rider_behavior ? `${parseFloat(overall.avg_rider_behavior).toFixed(0)}% (${getRatingLabel(parseFloat(overall.avg_rider_behavior))})` : "0% (Poor)",
+          avgOnTimeDelivery: overall.avg_on_time_delivery ? `${parseFloat(overall.avg_on_time_delivery).toFixed(0)}% (${getRatingLabel(parseFloat(overall.avg_on_time_delivery))})` : "0% (Poor)",
+          avgAffordability: overall.avg_affordability ? `${parseFloat(overall.avg_affordability).toFixed(0)}% (${getRatingLabel(parseFloat(overall.avg_affordability))})` : "0% (Poor)",
+          totalReviews: parseInt(overall.total_reviews, 10) || 0
+        },
+        ratings: ratings.map(rating => ({
+          rating_id: rating.id,
+          rating_value: rating.stars,
+          rider_behavior_score: `${rating.rider_behavior_score}% (${getRatingLabel(rating.rider_behavior_score)})`,
+          on_time_delivery_score: `${rating.on_time_delivery_score}% (${getRatingLabel(rating.on_time_delivery_score)})`,
+          affordability_score: `${rating.affordability_score}% (${getRatingLabel(rating.affordability_score)})`,
+          review: rating.review || 'No review provided',
+          created_at: rating.created_at,
+          customer_name: `${rating.customer?.firstname || ''} ${rating.customer?.lastname || ''}`.trim() || null,
+          rider_name: rating.rider?.rider_name || null,
+        })),
         pagination: {
           page,
           limit,
@@ -742,9 +753,14 @@ async getRatings(companyId: number, page: number = 1, limit: number = 10): Promi
       return resp;
     }
 
+    // Agar koi rating nahi mili
     resp.success = false;
+    resp.httpResponseCode = 404;
+    resp.customResponseCode = '404 Not Found';
     resp.message = 'No ratings found for this company';
+    resp.result = null;
     return resp;
+
   } catch (ex) {
     resp.success = false;
     resp.httpResponseCode = 400;
