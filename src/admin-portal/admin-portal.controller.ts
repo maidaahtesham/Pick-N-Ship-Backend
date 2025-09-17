@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards, Req, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards, Req, UseInterceptors, UploadedFile, Res, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AdminPortalService } from './admin-portal.service';
 import { edit_courier_company_dto } from '../ViewModel/edit_courier_company.dto';
 import { Response } from '../ViewModel/response';
@@ -57,15 +57,25 @@ async getCompany(@Body() body: { companyId: number }): Promise<Response> {
     return await this.adminPortalService.deleteCompany(companyId);
   }
 
-@Post('update-cPreadompany-status')
+@Post('update-company-status')
 updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'accepted' | 'rejected'; rejection_reason?: string }) {
   return this.adminPortalService.updateCompanyStatus(data.company_id, data.status, data.rejection_reason);
 }
 
-  @Post('set-commission')
-  setCommission(@Body() body: { company_id: number; commission_type: string; commission_rate?: string }) {
-    return this.adminPortalService.setCommission(body);
-  } 
+
+ @Post('get-commission')
+ @HttpCode(200)
+  async getCommission(@Body() body: { company_id: number; page?: number; limit?: number }): Promise<Response> {
+    return this.adminPortalService.getCommission(body);
+  }
+
+ @Post('set-commission')
+  
+  @UsePipes(new ValidationPipe({ transform: true }))
+   async setCommission(@Body() body: { company_id: number; commission_type: string; commission_rate: string }[]) {
+    console.log(body);
+     return this.adminPortalService.setCommission(body);
+  }
 
 @Post('get-ratings')
 @HttpCode(200)

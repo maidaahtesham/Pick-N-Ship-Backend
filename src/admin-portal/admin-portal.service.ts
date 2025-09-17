@@ -570,28 +570,19 @@ async updateCompanyStatus(company_id: number, status: 'pending'|'accepted' | 're
     return resp;
   }
 }
+ async getCommission({
+    company_id,
+    page = 1,
+    limit = 10,
+  }: {
+    company_id: number;
+    page?: number;
+    limit?: number;
+  }): Promise<Response> {
+    const resp = new Response();
 
-
-async setCommission({ company_id, commission_type, commission_rate }: { company_id: number; commission_type: string; commission_rate?: string }): Promise<Response> {
-  const resp = new Response();
-
-  try {
-    // Check if a commission rate exists for the company and commission type
-    const existingCommission = await this.companyCommissionRateRepository.findOne({
-      where: { company: { company_id } }, // Use the relation
-    });
-
-    let updatedCommissionRate = "0%";
-    // Determine the commission rate based on commission_type
-    if (commission_type === 'standard') updatedCommissionRate = "10%";
-    else if (commission_type === 'sme') updatedCommissionRate = "5%";
-    else if (commission_type === 'custom' && commission_rate) {
-      // Ensure commission_rate is a valid number, default to 0 if invalid
-      updatedCommissionRate = commission_rate || "" + "%";
-    }
-
-    if (!existingCommission) {
-      // Create new commission rate if it doesn't exist
+    try {
+      // Validate company existence
       const company = await this.companyRepository.findOne({ where: { company_id } });
       if (!company) {
         resp.message = 'Company not found';
@@ -600,37 +591,131 @@ async setCommission({ company_id, commission_type, commission_rate }: { company_
         return resp;
       }
 
-      const newCommissionRate = this.companyCommissionRateRepository.create({
-        commission_type,
-        commission_rate: updatedCommissionRate,
-        createdOn: new Date(),
-        updatedOn: new Date(),
-        createdBy: 'admin', // Adjust as needed
-        updatedBy: 'admin', // Adjust as needed
-        status: true,
-        company, // Assign the Company entity
-      });
-      await this.companyCommissionRateRepository.save(newCommissionRate);
-      resp.success = true;
-      resp.message = 'Commission rate set successfully';
-      resp.httpResponseCode = 201;
-      resp.customResponseCode = '201 Created';
-      resp.result = { company_id, commission_type, commission_rate: updatedCommissionRate };
-    } else {
-      // Update existing commission rate
-      await this.companyCommissionRateRepository.update(
-        { company: { company_id } }, // Use the relation
-        { commission_rate: updatedCommissionRate, updatedOn: new Date(), updatedBy: 'admin', status: true }
-      );
-      resp.success = true;
-      resp.message = 'Commission rate updated successfully';
-      resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
-      resp.result = { company_id, commission_type, commission_rate: updatedCommissionRate };
-    }
+      // Calculate pagination parameters
+      const skip = (page - 1) * limit;
+      const take = limit;
 
+      // Fetch paginated commission rates
+      const [commissions, total] = await this.companyCommissionRateRepository.findAndCount({
+        where: { company: { company_id }, status: true },
+        skip,
+        take,
+      });
+
+      // Prepare default rates if no commissions exist
+      const defaultRates = [
+        { company_id, commission_type: 'standard', commission_rate: '10%' },
+        { company_id, commission_type: 'sme', commission_rate: '5%' },
+      ];
+
+      // If no commissions exist, return default rates (considering pagination)
+      // if (!commissions || commissions.length === 0) {
+      //   const paginatedDefaults = defaultRates.slice(skip, skip + take);
+      //   resp.success = true;
+      //   resp.message = 'No commission rates set, returning defaults';
+      //   resp.httpResponseCode = 200;
+      //   resp.customResponseCode = '200 OK';
+      //   resp.result = {
+      //     data: paginatedDefaults,
+      //     pagination: {
+      //       total: defaultRates.length,
+      //       page,
+      //       limit,
+      //       totalPages: Math.ceil(defaultRates.length / limit),
+      //     },
+      //   };
+      //   return resp;
+      // }
+
+      // Map commissions to the expected response format
+      const result = commissions.map((commission) => ({
+        company_id,
+        commission_type: commission.commission_type,
+        commission_rate: commission.commission_rate,
+      }));
+
+      // Ensure standard and sme are included, using defaults if missing
+ const mergedRates = defaultRates.map((defaultRate) => {
+  const existing = result.find((r) => r.commission_type === defaultRate.commission_type);
+  return existing || defaultRate;
+});
+const paginatedResult = mergedRates.slice(skip, skip + take);
+
+resp.success = true;
+resp.message = 'Commission rates retrieved successfully';
+resp.httpResponseCode = 200;
+resp.customResponseCode = '200 OK';
+resp.result = {
+  data: paginatedResult,
+  pagination: {
+    total: mergedRates.length, // Total is now the length of the merged rates
+    page,
+    limit,
+    totalPages: Math.ceil(mergedRates.length / limit),
+  },
+};
+return resp;
+    } catch (ex) {
+      resp.message = `Failed to fetch commission rates: ${ex.message}`;
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 BadRequest';
+      return resp;
+    }
+  }
+
+// src/admin-portal/admin-portal.service.ts
+
+async setCommission(rates: { company_id: number; commission_type: string; commission_rate: string }[]): Promise<Response> {
+  const resp = new Response();
+
+  try {
+    for (const rateData of rates) {
+      const { company_id, commission_type, commission_rate } = rateData;
+      
+      // Corrected: Filter using the 'company' relation and its nested 'company_id'
+      const existingCommission = await this.companyCommissionRateRepository.findOne({
+        where: {
+          company: { company_id: company_id }, // This is the correct syntax for relations
+          commission_type: commission_type,
+        },
+      });
+
+      if (!existingCommission) {
+        const company = await this.companyRepository.findOne({ where: { company_id } });
+        if (!company) {
+          resp.message = 'Company not found';
+          resp.httpResponseCode = 404;
+          resp.customResponseCode = '404 NotFound';
+          return resp;
+        }
+
+        const newCommissionRate = this.companyCommissionRateRepository.create({
+          ...rateData,
+          company,
+          createdOn: new Date(),
+          updatedOn: new Date(),
+          createdBy: 'admin',
+          updatedBy: 'admin',
+          status: true,
+        });
+        await this.companyCommissionRateRepository.save(newCommissionRate);
+      } else {
+        // Corrected: Update using the 'company' relation and 'commission_type'
+        await this.companyCommissionRateRepository.update(
+          { company: { company_id: company_id }, commission_type: commission_type },
+          { commission_rate, updatedOn: new Date(), updatedBy: 'admin', status: true }
+        );
+      }
+    }
+    
+    resp.success = true;
+    resp.message = 'Commission rates updated successfully';
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    resp.result = rates;
     return resp;
-  } catch (ex) {
+
+  } catch (ex: any) {
     resp.message = `Failed to set commission: ${ex.message}`;
     resp.httpResponseCode = 400;
     resp.customResponseCode = '400 BadRequest';
