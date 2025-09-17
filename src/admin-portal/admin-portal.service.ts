@@ -107,6 +107,60 @@ async hashPassword(password: string): Promise<string> {
     return resp;
   }
 }
+
+
+async updatePassword(data: { admin_id: number; newPassword: string }): Promise<Response> {
+  const resp = new Response();
+
+  try {
+    const { admin_id, newPassword } = data; // Correctly destructure the single object
+    
+    // Check if newPassword is a valid string before proceeding
+    if (typeof newPassword !== 'string' || newPassword.length === 0) {
+      resp.message = 'Invalid password provided';
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 BadRequest';
+      return resp;
+    }
+
+    // 1. Find the admin by ID
+    const admin = await this.superAdminRepository.findOne({ where: { admin_id } });
+    if (!admin) {
+      resp.message = 'Admin not found';
+      resp.httpResponseCode = 404;
+      resp.customResponseCode = '404 NotFound';
+      return resp;
+    }
+
+    // 2. Hash the new password
+    // Ensure that newPassword is not null or undefined here
+    const hashedNewPassword = await this.hashPassword(newPassword);
+
+    // 3. Update the password in the database
+    admin.password = hashedNewPassword;
+    admin.updatedOn = new Date();
+    await this.superAdminRepository.save(admin);
+
+    resp.success = true;
+    resp.message = 'Password updated successfully';
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    resp.result = null;
+    return resp;
+  } catch (error: any) {
+    resp.success = false;
+    resp.message = `Failed to update password: ${error.message}`;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 BadRequest';
+    return resp;
+  }
+}
+ 
+
+
+
+
+
 async saveFile(file: Express.Multer.File): Promise<string> {
     const uploadDir = path.join(__dirname, '..', 'uploads');
     

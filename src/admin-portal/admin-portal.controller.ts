@@ -15,8 +15,16 @@ export class AdminPortalController {
   @HttpCode(200)
   async createSuperAdmin(@Body() data: Partial<super_admin>): Promise<Response> {
     return this.adminPortalService.createSuperAdmin(data);
+  } 
+
+
+  @Post('update-password')
+  @HttpCode(200)
+  async updatePassword(@Body() data: { admin_id: number; newPassword: string }): Promise<any> {
+    return this.adminPortalService.updatePassword(data);
   }
-  
+
+
  @Post('upload-profile-picture')
   @HttpCode(200)
   @UseInterceptors(FileInterceptor('profile_picture'))
@@ -76,6 +84,8 @@ updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'acce
     console.log(body);
      return this.adminPortalService.setCommission(body);
   }
+ 
+
 
 @Post('get-ratings')
 @HttpCode(200)
