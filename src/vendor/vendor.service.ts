@@ -12,6 +12,8 @@ import { shipping_detail_dto } from '../ViewModel/shipping_detail_dto';
 import { vendorDetailsDTO } from '../ViewModel/vendorDetailsDTO.dto';
 import { vendorSignUpDTO } from '../ViewModel/vendorSignUpDTO.dto';
 import { DataSource, Repository } from 'typeorm';
+import { Rider } from 'src/Models/rider.entity';
+import { GetAllShipmentsDto } from 'src/ViewModel/get_all_shipment_dto';
 
 @Injectable()
 export class VendorService {
@@ -32,6 +34,9 @@ export class VendorService {
     
     @InjectRepository(Shipment)
     private shipmentRepository: Repository<Shipment>,
+
+    @InjectRepository(Rider)
+    private riderRepository: Repository<Rider>,
 
   ) {}
 
@@ -323,37 +328,203 @@ if (!company) {
 //       return resp;
 //     }
 //   }
-  async getActiveJobs(data: { company_id: number }): Promise<Response> {
-    const resp= new Response();
-    try {
-      const shipments = await this.shipmentRepository.find({
-      where: { courierCompany: { company_id: data.company_id } },  
-        relations: ['rider', 'shipment_request', 'shipment_request.customer'],
-      });
+  async getActiveJobs({ companyId, page, limit, status, search }) {
+  try {
+    const query = this.shipmentRepository
+      .createQueryBuilder('s')
+      .where('s.company_id = :companyId', { companyId }) // This line filters by company
+      .leftJoinAndSelect('s.rider', 'rider') // Join to get rider details
+      .skip((page - 1) * limit)
+      .take(limit);
 
-      // Enhance shipment data with customer full name
-      const enrichedShipments = shipments.map(shipment => ({
-        ...shipment,
-        customerName: shipment.shipment_request?.customer
-          ? `${shipment.shipment_request.customer.firstname} ${shipment.shipment_request.customer.lastname}`
-          : shipment.sender_name,
-      }));
-
-      resp.success = true;
-      resp.message = 'Active jobs fetched successfully';
-      resp.result = enrichedShipments;
-      resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
-      resp.count = enrichedShipments.length;
-      return resp;
-    } catch (error) {
-      resp.success = false;
-      resp.message = 'Failed to fetch active jobs: ' + error.message;
-      resp.httpResponseCode = 400;
-      resp.customResponseCode = '400 Bad Request';
-      return resp;
+    if (status) {
+      query.andWhere('s.status = :status', { status });
     }
+
+    if (search) {
+      query.andWhere(
+        `(s.sender_name ILIKE :search OR 
+          s.receiver_name ILIKE :search OR 
+          rider.name ILIKE :search)`, // Search by sender, receiver, or rider name
+        { search: `%${search}%` },
+      );
+    }
+
+    query.orderBy('s.created_at', 'DESC');
+
+    const [data, total] = await query.getManyAndCount();
+
+    return {
+      success: true,
+      message: 'Jobs fetched successfully',
+      data: {
+        jobs: data,
+        pagination: {
+          total,
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          limit,
+        },
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Failed to fetch jobs',
+      error: error.message,
+    };
   }
+}
+ 
+
+async getAllJobsByCompany({ companyId, page, limit, status, search }) {
+    try {
+        const query = this.shipmentRepository
+            .createQueryBuilder('s')
+            // Add the join to the Customer entity
+            .leftJoinAndSelect('s.customer', 'customer')
+            .leftJoinAndSelect('s.rider', 'rider')
+            .leftJoinAndSelect('s.courierCompany', 'company')
+            .where('s.courierCompany = :companyId', { companyId })
+            .skip((page - 1) * limit)
+            .take(limit);
+
+        if (status) {
+            query.andWhere('s.job_status = :status', { status });
+        }
+
+        if (search) {
+            query.andWhere(
+                `(s.sender_name ILIKE :search OR 
+                  s.receiver_name ILIKE :search OR 
+                  rider.rider_name ILIKE :search OR // Use rider.rider_name based on your rider entity
+                  customer.firstname ILIKE :search OR // Search by customer name
+                  customer.lastname ILIKE :search)`,
+                { search: `%${search}%` },
+            );
+        }
+
+        query.orderBy('s.createdOn', 'DESC');
+
+        const [data, total] = await query.getManyAndCount();
+
+        return {
+            success: true,
+            message: 'Jobs fetched successfully',
+            data: {
+                jobs: data,
+                pagination: {
+                    total,
+                    currentPage: page,
+                    totalPages: Math.ceil(total / limit),
+                    limit,
+                },
+            },
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: 'Failed to fetch jobs',
+            error: error.message,
+        };
+    }
+}
+  async getAllShipments({
+    company_id,
+    page = 1,
+    limit = 10,
+    status,
+    search,
+  }: GetAllShipmentsDto) {
+    try {
+      // Build the base query for shipments, joining related entities
+      const query = this.shipmentRepository
+        .createQueryBuilder('shipment')
+        // Join the Customer entity to filter by customer_id
+        .leftJoinAndSelect('shipment.customer', 'customer')
+        // Join Rider and CourierCompany for display purposes
+        .leftJoinAndSelect('shipment.rider', 'rider')
+        .leftJoinAndSelect('shipment.courierCompany', 'company')
+        // Filter by company_id
+        .where('shipment.company_id = :companyId', { companyId: company_id });
+
+      // Apply optional status filter
+      if (status) {
+        query.andWhere('shipment.job_status = :status', { status });
+      }
+
+      // Apply optional search filter
+      if (search) {
+        query.andWhere(
+          `(shipment.tracking_number ILIKE :search OR
+            shipment.sender_name ILIKE :search OR
+            shipment.receiver_name ILIKE :search OR
+            rider.rider_name ILIKE :search)`,
+          { search: `%${search}%` },
+        );
+      }
+
+      // Order by the creation date
+      query.orderBy('shipment.createdOn', 'DESC');
+
+      // Add pagination
+      query.skip((page - 1) * limit).take(limit);
+
+      // Execute the query and get both data and total count
+      const [data, total] = await query.getManyAndCount();
+
+      return {
+        success: true,
+        message: 'Shipments fetched successfully',
+        data: {
+          shipments: data,
+          pagination: {
+            total,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            limit,
+          },
+        },
+      };
+    } catch (error) {
+      console.error('Error fetching customer shipments:', error);
+      return {
+        success: false,
+        message: 'Failed to fetch shipments',
+        error: error.message,
+      };
+    }
+
+  }
+async getAllRiders(
+  page: number = 1,
+  limit: number = 10,
+  sortBy: string = 'id',
+  sortOrder: 'ASC' | 'DESC' = 'ASC',
+  search: string = '',
+) {
+  const query = this.riderRepository.createQueryBuilder('rider');
+
+  // Handle search functionality
+  if (search) {
+    query.where('LOWER(rider.rider_name) LIKE LOWER(:search)', { search: `%${search}%` })
+         .orWhere('LOWER(rider.email) LIKE LOWER(:search)', { search: `%${search}%` })
+         .orWhere('LOWER(rider.licence_number) LIKE LOWER(:search)', { search: `%${search}%` })
+         .orWhere('LOWER(rider.vehicle_type) LIKE LOWER(:search)', { search: `%${search}%` });
+  }
+
+  // Apply sorting
+  query.orderBy(`rider.${sortBy}`, sortOrder);
+
+  // Apply pagination
+  query.skip((page - 1) * limit).take(limit);
+
+  const [data, total] = await query.getManyAndCount();
+
+  return { data, total };
+}
+
+
 }
 
 

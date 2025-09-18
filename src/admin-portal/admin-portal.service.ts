@@ -1003,12 +1003,12 @@ async getAllJobs({ page, limit, status, search }) {
 //       id: true,
 //       status: true,
 //       parcel_type: true,
-//       shipment_type: true,
+//       payment_mode: true,
 //       pickup_time: true,
 //       delivery_time: true,
 //       receiver_name: true,
 //       sender_name: true,
-//       shipment_id_tag_no: true,
+//       tracking_number: true,
 //       createdOn: true,
 //       sender_phone: true,
 //       receiver_phone: true,
@@ -1040,12 +1040,12 @@ async getShipmentOverview(@Body('id') id: number): Promise<Response> {
         id: true,
         status: true,
         parcel_type: true,
-        shipment_type: true,
+        payment_mode: true,
         pickup_time: true,
         delivery_time: true,
         receiver_name: true,
         sender_name: true,
-        shipment_id_tag_no: true,
+        tracking_number: true,
         createdOn: true,
         sender_phone: true,
         receiver_phone: true,
@@ -1079,18 +1079,50 @@ async getShipmentOverview(@Body('id') id: number): Promise<Response> {
 }
 
 async getCodShipments(page: number, limit: number, courier_company?: string) {
-  const query = this.codPaymentRepository
-    .createQueryBuilder('cod_payment')
-    .leftJoinAndSelect('cod_payment.shipment', 'shipment');
+    const query = this.codPaymentRepository
+      .createQueryBuilder('cod_payment')
+      .leftJoinAndSelect('cod_payment.shipment', 'shipment')
+      .leftJoinAndSelect('cod_payment.courierCompany', 'courierCompany'); // This join is needed for the filter
 
-  const [data, total] = await query
-    .skip((page - 1) * limit)
-    .take(limit)
-    .getManyAndCount();
+    // Add filtering for company if provided
+    if (courier_company) {
+      query.andWhere('courierCompany.name = :courier_company', { courier_company });
+    }
 
-  return { data, total };
-}
+    // Get the list of shipments for the table
+    const [data, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
+    // Calculate total receivable amount (COD)
+    const receivableAmount = await this.codPaymentRepository
+      .createQueryBuilder('cod_payment')
+      .select('SUM(cod_payment.cod_amount)', 'sum')
+      .getRawOne();
+
+    // Calculate total pending amount
+    const pendingAmount = await this.codPaymentRepository
+      .createQueryBuilder('cod_payment')
+      .select('SUM(cod_payment.cod_amount)', 'sum')
+      .where('cod_payment.payment_status = :status', { status: 'pending' })
+      .getRawOne();
+
+    // Calculate total retrieved amount
+    const retrievedAmount = await this.codPaymentRepository
+      .createQueryBuilder('cod_payment')
+      .select('SUM(cod_payment.cod_amount)', 'sum')
+      .where('cod_payment.payment_status = :status', { status: 'retrieved' })
+      .getRawOne();
+
+    return {
+      data,
+      total,
+      receivableAmount: receivableAmount.sum || 0,
+      pendingAmount: pendingAmount.sum || 0,
+      retrievedAmount: retrievedAmount.sum || 0,
+    };
+  }
   // Get total COD amounts (receivable, pending, retrieved)
   async getCodSummary(): Promise<{ receivable: number; pending: number; retrieved: number }> {
     const receivable = await this.codPaymentRepository

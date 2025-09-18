@@ -9,9 +9,10 @@ import { CodPayment } from '../Models/cod_payment.entity';
 import { vendor_user } from '../Models/vendor_user.entity';
 import { company_document } from '../Models/company_document.entity';
 import { shipping_detail } from '../Models/shipping_detail.entity';
+import { Rider } from 'src/Models/rider.entity';
 
 @Module({
-      imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,vendor_user, company_document,shipping_detail])],
+      imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,vendor_user, company_document,shipping_detail,Rider])],
   
   controllers: [VendorController],
   providers: [VendorService],

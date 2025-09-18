@@ -8,6 +8,7 @@ import { vendorDetailsDTO } from '../ViewModel/vendorDetailsDTO.dto';
 import { company_document_dto } from '../ViewModel/company_document_dto';
 import { shipping_detail_dto } from '../ViewModel/shipping_detail_dto';
 import { Shipment } from '../Models/shipment.entity';
+import { GetAllShipmentsDto } from 'src/ViewModel/get_all_shipment_dto';
 
 
 @UseGuards(JwtAuthGuard)
@@ -40,11 +41,46 @@ async createVendorUser(@Body() data:vendorSignUpDTO): Promise<Response>{
     return this.vendorService.addShippingDetails(data);
   }
 
-  @Post('active-jobs')
-  async getActiveJobs(@Body() data: { company_id: number }): Promise<Response> {
-    return this.vendorService.getActiveJobs(data);
-  }
- 
+  
+  @Post('get-all-jobs')
+  async getAllJobs(
+    @Body()
+    body: {
+      company_id: number;
+      page?: number;
+      limit?: number;
+      status?: string;
+      search?: string;
+    },
+  ) {
+    const { company_id, page, limit, status, search } = body;
 
+    // Directly call the service method with the company_id from the body
+    const result = await this.vendorService.getAllJobsByCompany({
+      companyId: company_id,
+      page,
+      limit,
+      status,
+      search,
+    });
+
+    return result;
+  }
+  @Post('get-all-shipments')
+  async getAllShipments(@Body() getAllShipmentsDto: GetAllShipmentsDto) {
+    return this.vendorService.getAllShipments(getAllShipmentsDto);
+  }
+@Post('all-riders')
+  async getAllRiders(@Body() body: any) {
+    const { page, perPage, search, sortBy, sortOrder } = body;
+    
+     return this.vendorService.getAllRiders(
+      page,
+      perPage,  
+      sortBy,
+      sortOrder,
+      search,
+    );
+  }
 
 }

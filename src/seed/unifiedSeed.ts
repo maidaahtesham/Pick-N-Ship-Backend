@@ -306,7 +306,7 @@ async function unifiedSeed() {
     const shipments = [
       {
        
-        shipment_id_tag_no: 'SHIP001',
+        tracking_number: 'SHIP001',
         request_id: savedRequests[0].request_id, // Use the saved request ID
         customer_id: savedCustomers[0].id,
         pickup_time: new Date('2025-07-31T14:00:00'),
@@ -318,7 +318,7 @@ async function unifiedSeed() {
         receiver_name: 'Bob Smith',
         sender_phone: '1234567890',
         receiver_phone: '9876543210',
-        shipment_type: 'standard',
+        payment_mode: 'standard',
         delivered_on: new Date('2025-07-31T16:00:00'),
         job_status: 'completed',
         parcel_details: 'Small package, fragile',
@@ -333,7 +333,7 @@ async function unifiedSeed() {
       },
       {
         // courier_company_id: savedCompanies[1].company_id,
-        shipment_id_tag_no: 'SHIP002',
+        tracking_number: 'SHIP002',
         request_id: savedRequests[1].request_id, // Use the saved request ID
         customer_id: savedCustomers[1].id,
         pickup_time: new Date('2025-07-31T15:00:00'),

@@ -79,7 +79,7 @@ export class CustomerUserService {
 
       const shipment = this.shipmentRepository.create({
         // courier_company_id: savedRequest.company?.company_id || 1, // Default to company_id 1 if not set
-         shipment_id_tag_no: `SHIP-${savedRequest.request_id}-${Date.now()}`,
+        tracking_number: `SHIP-${savedRequest.request_id}-${Date.now()}`,
         request_id: savedRequest.request_id,
         customer_id: customerId,
         pickup_time: requestDate,
@@ -91,7 +91,7 @@ export class CustomerUserService {
         receiver_name: savedRequest.receiver_name,
         sender_phone: savedRequest.receiver_phone,
         receiver_phone: savedRequest.receiver_phone,
-        shipment_type: 'regular',
+        payment_mode: 'regular',
         delivered_on: data.request_date,
         job_status: 'pending',
         parcel_details: savedRequest.special_instruction || '',

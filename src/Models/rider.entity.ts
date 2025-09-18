@@ -4,11 +4,15 @@ import { shipment_request } from "./shipment_request.entity";
 import { Shipment } from "./shipment.entity";
 import { courier_company } from "./courier_company.entity";
 import { CodPayment } from "./cod_payment.entity";
+import { shipment_jobs } from "./shipment_jobs.entity";
 
 @Entity()
 export class Rider {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({nullable: true })
+  rider_tag_id: string;
 
   @Column()
   rider_name: string;
@@ -79,6 +83,9 @@ codPayments: CodPayment[]; // Assuming a rider can have multiple cod payments
 @ManyToOne(() => courier_company, (company) => company.shipments)
  @JoinColumn({ name: 'company_id' }) company: courier_company;
 
+
+    @OneToMany(() => shipment_jobs, (job) => job.rider)
+    shipmentJobs: shipment_jobs[];
 
 }
 

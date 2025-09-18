@@ -32,6 +32,27 @@ sender_name: string;
 @Column({length: 255, nullable: true })
 delivered_on:string;
 
+ @Column({ type: 'boolean', default: false })
+  is_paid_to_company: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  is_remitted_to_pns: boolean;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
+createdOn: Date;
+
+@Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
+updatedOn: Date;
+
+  @Column({length:50, nullable: true})
+  createdBy: string;
+
+  @Column({length:50, nullable: true})
+  updatedBy: string;
+
+  @Column({ type: 'boolean', default: null })
+  status: boolean;
+  
 @ManyToOne(() => Rider, (rider) => rider.codPayments)
 @JoinColumn({ name: 'rider_id' })
 rider: Rider;

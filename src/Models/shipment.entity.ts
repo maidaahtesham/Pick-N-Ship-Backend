@@ -6,6 +6,9 @@ import { Customer } from './customer.entity';
 import { shipment_request } from './shipment_request.entity';
 import { shipping_detail } from './shipping_detail.entity';
 import { CodPayment } from './cod_payment.entity';
+import { shipment_jobs } from './shipment_jobs.entity';
+import { earning } from './earnings.entity';
+import { text } from 'stream/consumers';
 
 // Shipment Entity
 @Entity()
@@ -13,53 +16,62 @@ export class Shipment {
   @PrimaryGeneratedColumn()
   id: number;
  
- @Column()
-  shipment_id_tag_no: string;
+ @Column({unique:true, nullable:true})
+  tracking_number: string;
 
   @Column({nullable:true})
-  request_id: number;
+  request_id: number; /*questionable*/ 
 
   @Column()
   customer_id: number;
 
-  @Column()
-  pickup_time: Date;
+  @Column({nullable:true})
+  pickup_time: Date;  
 
-  @Column()
-  delivery_time: Date;
+  @Column({nullable:true})
+  delivery_time: Date;  
 
-  @Column()
-  delivery_status: string;
+  @Column({nullable:true})
+  delivery_status: string; /*questionable*/
 
-  @Column('float')
-  cod_amount: number;
+  @Column({nullable:true})
+  cod_amount: number;  
 
-  @Column()
-  parcel_type: string;
+  @Column({nullable:true})
+  parcel_type: string;  
 
-  @Column()
+    @Column({nullable:true})
+  parcel_details: string;
+
+  @Column({nullable:true})
+  parcel_size: string;
+
+  @Column({nullable:true})
+  pickup_address: string;
+
+  @Column({nullable:true})
+  delivery_address: string;
+
+  @Column({nullable:true})
   sender_name: string;
 
-  @Column()
+  @Column({nullable:true})
   receiver_name: string;
 
-  @Column()
+  @Column({nullable:true})
   sender_phone: string;
 
-  @Column()
+  @Column({nullable:true})
   receiver_phone: string;
 
-  @Column()
-  shipment_type: string;
+  @Column({nullable:true})
+  payment_mode: string;
 
-  @Column()
+  @Column({nullable:true})
   delivered_on: Date;
 
-  @Column()
+  @Column({nullable:true})
   job_status: string;
-
-  @Column('text')
-  parcel_details: string;
 
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
@@ -102,5 +114,12 @@ shipment_request: shipment_request;
 @ManyToOne(() => shipping_detail, (shippingDetail) => shippingDetail.shipping_id, { nullable: true }) // New relationship
   @JoinColumn({ name: 'shipping_id' }) // Link to shipping_detail's shipping_id
   shippingDetail: shipping_detail;
+
+    @OneToMany(() => shipment_jobs, (job) => job.shipment)
+    shipmentJobs: shipment_jobs[];
+
+    
+    @OneToMany(() => earning, (job) => job.earning_id)
+    earnings: earning[];
 
 }

@@ -11,6 +11,7 @@ import { super_admin } from './super_admin.entity';
 import { CodPayment } from './cod_payment.entity';
 import { company_çonveyance_details } from './company_conveyance_details.entity';
 import { company_commission_rate } from './company_commission_rate.entity';
+import { earning } from './earnings.entity';
 
 
 @Entity()
@@ -68,7 +69,7 @@ rejection_reason: string;
 
   @OneToMany(() => Rating, (rating) => rating.company, { nullable: true })
     ratings: Rating[];
-    
+
   @OneToMany(() => shipment_request, (shipment_request) => shipment_request.company)
     shipment_request: shipment_request[];
 
@@ -99,6 +100,10 @@ superAdmins: super_admin[];
 
 @OneToMany(() => company_commission_rate, (commission) => commission.company)
 commissionRates: company_commission_rate[];
+
+
+@OneToMany(()=> earning, (earning) => earning.company)
+earnings: earning[];
 
 }
 

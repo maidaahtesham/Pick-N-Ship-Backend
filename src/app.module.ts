@@ -28,6 +28,8 @@ import { CodPayment } from './Models/cod_payment.entity';
 import { company_çonveyance_details } from './Models/company_conveyance_details.entity';
 import { company_çonveyance_pricing_details } from './Models/company_çonveyance_pricing_details.entity';
 import { company_commission_rate } from './Models/company_commission_rate.entity';
+import { earning } from './Models/earnings.entity';
+import { shipment_jobs } from './Models/shipment_jobs.entity';
 @Module({
   imports: [
     // Load environment variables globally
@@ -81,7 +83,9 @@ import { company_commission_rate } from './Models/company_commission_rate.entity
         shipping_pricing,
         company_çonveyance_details,
         company_çonveyance_pricing_details,
-        company_commission_rate
+        company_commission_rate,
+        shipment_jobs,
+        earning
       ],
       // migrations: ['dist/migrations/*.ts'],
 
