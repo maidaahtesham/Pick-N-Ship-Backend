@@ -45,7 +45,7 @@ export class VendorService {
     return bcrypt.hash(password, salt); // Hash the password
   }
 
-  /* CREATE Vendor User */
+  
   async createVendorUser(data: vendorSignUpDTO): Promise<Response> {
     const resp= new Response();
     try {
@@ -80,7 +80,7 @@ if (!company) {
           password: data.password,
           phone_number:data.phone_number,
           status:true,
-          company
+          company: company
 
         });
         await this.vendorRepository.save(vendor);
@@ -95,7 +95,7 @@ if (!company) {
           password: hashedPassword,
           phone_number:data.phone_number,
           status:true,
-          
+          company: company
         });
         vendor = await this.vendorRepository.save(newVendor);
         resp.message = 'Vendor user inserted successfully';
@@ -116,7 +116,7 @@ if (!company) {
   }
 
   async findByEmail(email_address: string): Promise<vendor_user | null> {
-    return this.vendorRepository.findOne({ where: { email_address } });
+    return this.vendorRepository.findOne({ where: { email_address } , relations: ['company']});
   }
 
   async validateVendorUser(email: string, password: string): Promise<any> {
