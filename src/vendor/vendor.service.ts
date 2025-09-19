@@ -55,38 +55,7 @@ export class VendorService {
 
       let vendor: vendor_user | null = null;
 
-      if (data.id) {
-        vendor = await this.vendorRepository.findOne({ where: { id: data.id } });
-      } else if (data.email_address) {
-        vendor = await this.vendorRepository.findOne({ where: { email_address: data.email_address } });
-      }
-      const company= await this.courierCompanyRepository.findOne({where:{ company_id:data.company_id}})
-
-if (!company) {
-  throw new Error(`Company with id ${data.company_id} not found`);
-}
-      if (vendor) {
-        // Update existing record
-        if (data.password) {
-          // Hash the password if provided
-          data.password = await this.hashPassword(data.password);
-        }
-
-        // Update existing record with mapped fields
-        vendor = this.vendorRepository.merge(vendor, {
-          first_name: data.first_name,
-          last_name: data.last_name,
-          email_address: data.email_address,
-          password: data.password,
-          phone_number:data.phone_number,
-          status:true,
-          company: company
-
-        });
-        await this.vendorRepository.save(vendor);
-        resp.message = 'Vendor user updated successfully';
-      } else {
-        // Insert new record
+ 
         const hashedPassword = await this.hashPassword(data.password);
         const newVendor = this.vendorRepository.create({
           first_name: data.first_name,
@@ -95,12 +64,10 @@ if (!company) {
           password: hashedPassword,
           phone_number:data.phone_number,
           status:true,
-          company: company
-        });
+         });
         vendor = await this.vendorRepository.save(newVendor);
         resp.message = 'Vendor user inserted successfully';
-      }
-
+ 
       resp.success = true;
       resp.result = vendor;
       resp.httpResponseCode = 200;

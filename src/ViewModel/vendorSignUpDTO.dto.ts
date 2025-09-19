@@ -19,7 +19,7 @@ export class vendorSignUpDTO{
   password: string;   
 
    
-  company_id: number;   
+  // company_id: number;   
 
 
   phone_number:string;

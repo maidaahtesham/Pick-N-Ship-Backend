@@ -11,7 +11,6 @@ import { Shipment } from '../Models/shipment.entity';
 import { GetAllShipmentsDto } from 'src/ViewModel/get_all_shipment_dto';
 
 
-@UseGuards(JwtAuthGuard)
 @Controller('api/vendor')
 export class VendorController {
 constructor (private readonly vendorService:VendorService)
@@ -22,26 +21,26 @@ constructor (private readonly vendorService:VendorService)
 async createVendorUser(@Body() data:vendorSignUpDTO): Promise<Response>{
     return this.vendorService.createVendorUser(data);
 }
-
+@UseGuards(JwtAuthGuard)
 @Post('add-vendor-details')
   @HttpCode(200)
   async addVendorDetails(@Body() data: vendorDetailsDTO): Promise<Response> {
     return this.vendorService.addVendorDetails(data);
   }
-
+@UseGuards(JwtAuthGuard)
   @Post('add-company-documents')
   @HttpCode(200)
   async addCompanyDocuments(@Body() data: company_document_dto): Promise<Response> {
     return this.vendorService.addCompanyDocuments(data);
   }
-
+@UseGuards(JwtAuthGuard)
   @Post('add-shipping-details')
   @HttpCode(200)
   async addShippingDetails(@Body() data: shipping_detail_dto): Promise<Response> {
     return this.vendorService.addShippingDetails(data);
   }
 
-  
+  @UseGuards(JwtAuthGuard)
   @Post('get-all-jobs')
   async getAllJobs(
     @Body()
@@ -66,10 +65,13 @@ async createVendorUser(@Body() data:vendorSignUpDTO): Promise<Response>{
 
     return result;
   }
+  @UseGuards(JwtAuthGuard)
   @Post('get-all-shipments')
   async getAllShipments(@Body() getAllShipmentsDto: GetAllShipmentsDto) {
     return this.vendorService.getAllShipments(getAllShipmentsDto);
   }
+  
+  @UseGuards(JwtAuthGuard)
 @Post('all-riders')
   async getAllRiders(@Body() body: any) {
     const { page, perPage, search, sortBy, sortOrder } = body;

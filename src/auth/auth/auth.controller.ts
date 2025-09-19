@@ -21,11 +21,11 @@ export class AuthController {
     return this.authService.vendorlogin(user);
 
   }
-// @Post('customer-login')
-//   async customerLogin(@Body() body: { email: string; password: string })
-//   {
-//     const user = await this.customerService.validateCustomerUser(body.email, body.password);
-//     return this.authService.customerlogin(user);
+@Post('customer-login')
+  async customerLogin(@Body() body: { email: string; password: string })
+  {
+    const user = await this.customerService.validateCustomerUser(body.email, body.password);
+    return this.authService.customerlogin(user);
   
-//   }
+  }
   }
