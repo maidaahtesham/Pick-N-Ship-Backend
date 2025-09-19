@@ -462,6 +462,7 @@ async getCompany(companyId: number): Promise<Response> {
           establishment_card: documentDetails.establishment_card,
           trade_license_document_path: documentDetails.trade_license_document_path,
           company_document_path: documentDetails.company_document_path,
+          company_status: company.registeration_status,
           
         },
 // ratings: company.ratings.map(rating => {
