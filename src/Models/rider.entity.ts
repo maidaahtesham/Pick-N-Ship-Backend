@@ -8,7 +8,7 @@ import { shipment_jobs } from "./shipment_jobs.entity";
 
 @Entity()
 export class Rider {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'rider_id' })
   id: number;
 
   @Column({nullable: true })

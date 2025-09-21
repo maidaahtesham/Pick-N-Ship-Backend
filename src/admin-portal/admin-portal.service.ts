@@ -580,9 +580,13 @@ async getCompany(companyId: number): Promise<Response> {
   }
  
 
-async updateCompanyStatus(company_id: number, status: 'pending'|'accepted' | 'rejected',rejection_reason?: string,): Promise<Response> 
-{
-    const resp= new Response();
+async updateCompanyStatus(
+  company_id: number,
+  status: 'pending' | 'active' | 'declined',
+  rejection_reason?: string,
+  acceptance_reason?: string
+): Promise<Response> {
+  const resp = new Response();
   try {
     const company = await this.companyRepository.findOne({ where: { company_id } });
 
@@ -594,7 +598,7 @@ async updateCompanyStatus(company_id: number, status: 'pending'|'accepted' | 're
     }
 
     // If declining, rejection_reason must be provided
-    if (status === 'rejected' && !rejection_reason) {
+    if (status === 'declined' && !rejection_reason) {
       resp.httpResponseCode = 400;
       resp.customResponseCode = '400 BadRequest';
       resp.message = 'Rejection reason is required when declining a company';
@@ -603,8 +607,17 @@ async updateCompanyStatus(company_id: number, status: 'pending'|'accepted' | 're
 
     // Prepare update data
     const updateData: any = { registeration_status: status };
-    if (status === 'rejected') {
+
+    if (status === 'declined') {
       updateData.rejection_reason = rejection_reason;
+      updateData.acceptance_reason = null; // clear acceptance reason
+    } else if (status === 'active') {
+      updateData.acceptance_reason = acceptance_reason;
+      updateData.rejection_reason = null; // clear old rejection reason
+    } else if (status === 'pending') {
+      // optional: clear both if pending
+      updateData.acceptance_reason = null;
+      updateData.rejection_reason = null;
     }
 
     await this.companyRepository.update({ company_id }, updateData);
@@ -613,9 +626,11 @@ async updateCompanyStatus(company_id: number, status: 'pending'|'accepted' | 're
     resp.httpResponseCode = 200;
     resp.customResponseCode = '200 OK';
     resp.message =
-      status === 'accepted'
+      status === 'active'
         ? 'Congratulations, a new company has joined Pick n Ship platform!'
-        : `Company application has been declined. Reason: ${rejection_reason}`;
+        : status === 'declined'
+          ? `Company application has been declined. Reason: ${rejection_reason}`
+          : 'Company status updated to pending';
     resp.result = { company_id, status };
     return resp;
   } catch (ex) {
@@ -624,6 +639,8 @@ async updateCompanyStatus(company_id: number, status: 'pending'|'accepted' | 're
     resp.message = `Failed to update status: ${ex.message}`;
     return resp;
   }
+
+
 }
  async getCommission({
     company_id,
@@ -857,25 +874,35 @@ async getRatings(companyId: number, page: number = 1, limit: number = 10): Promi
         return 'Poor';
       };
 
-      const result = {
-        overall: {
-          avgStars: overall.avg_stars ? parseFloat(overall.avg_stars).toFixed(1) : "0.0",
-          avgRiderBehavior: overall.avg_rider_behavior ? `${parseFloat(overall.avg_rider_behavior).toFixed(0)}% (${getRatingLabel(parseFloat(overall.avg_rider_behavior))})` : "0% (Poor)",
-          avgOnTimeDelivery: overall.avg_on_time_delivery ? `${parseFloat(overall.avg_on_time_delivery).toFixed(0)}% (${getRatingLabel(parseFloat(overall.avg_on_time_delivery))})` : "0% (Poor)",
-          avgAffordability: overall.avg_affordability ? `${parseFloat(overall.avg_affordability).toFixed(0)}% (${getRatingLabel(parseFloat(overall.avg_affordability))})` : "0% (Poor)",
+     const result = {
+      overall: {
+      avgStars: overall.avg_stars ? parseFloat(overall.avg_stars).toFixed(1) : "0.0",
+          // Raw scores
+         avgRiderBehaviorScore: overall.avg_rider_behavior ? parseFloat(overall.avg_rider_behavior).toFixed(0) : "0",
+          avgOnTimeDeliveryScore: overall.avg_on_time_delivery ? parseFloat(overall.avg_on_time_delivery).toFixed(0) : "0",
+          avgAffordabilityScore: overall.avg_affordability ? parseFloat(overall.avg_affordability).toFixed(0) : "0",
+          // Calculated labels
+          avgRiderBehaviorLabel: overall.avg_rider_behavior ? getRatingLabel(parseFloat(overall.avg_rider_behavior)) : "Poor",
+          avgOnTimeDeliveryLabel: overall.avg_on_time_delivery ? getRatingLabel(parseFloat(overall.avg_on_time_delivery)) : "Poor",
+         avgAffordabilityLabel: overall.avg_affordability ? getRatingLabel(parseFloat(overall.avg_affordability)) : "Poor",
           totalReviews: parseInt(overall.total_reviews, 10) || 0
-        },
-        ratings: ratings.map(rating => ({
+   },
+         ratings: ratings.map(rating => ({
           rating_id: rating.id,
-          rating_value: rating.stars,
-          rider_behavior_score: `${rating.rider_behavior_score}% (${getRatingLabel(rating.rider_behavior_score)})`,
-          on_time_delivery_score: `${rating.on_time_delivery_score}% (${getRatingLabel(rating.on_time_delivery_score)})`,
-          affordability_score: `${rating.affordability_score}% (${getRatingLabel(rating.affordability_score)})`,
-          review: rating.review || 'No review provided',
-          created_at: rating.created_at,
-          customer_name: `${rating.customer?.firstname || ''} ${rating.customer?.lastname || ''}`.trim() || null,
-          rider_name: rating.rider?.rider_name || null,
-        })),
+           rating_value: rating.stars,
+         // Raw scores
+         rider_behavior_score: rating.rider_behavior_score,
+        on_time_delivery_score: rating.on_time_delivery_score,
+         affordability_score: rating.affordability_score,
+  // Calculated labels
+  rider_behavior_label: getRatingLabel(rating.rider_behavior_score),
+  on_time_delivery_label: getRatingLabel(rating.on_time_delivery_score),
+   affordability_label: getRatingLabel(rating.affordability_score),
+   review: rating.review || 'No review provided',
+  created_at: rating.created_at,
+  customer_name: `${rating.customer?.firstname || ''} ${rating.customer?.lastname || ''}`.trim() || null,
+  rider_name: rating.rider?.rider_name || null,
+  })),
         pagination: {
           page,
           limit,

@@ -66,8 +66,8 @@ async getCompany(@Body() body: { companyId: number }): Promise<Response> {
   }
 
 @Post('update-company-status')
-updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'accepted' | 'rejected'; rejection_reason?: string }) {
-  return this.adminPortalService.updateCompanyStatus(data.company_id, data.status, data.rejection_reason);
+updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'active' | 'declined'; rejection_reason?: string ; acceptance_reason?: string}): Promise<Response> {
+  return this.adminPortalService.updateCompanyStatus(data.company_id, data.status, data.rejection_reason, data.acceptance_reason);
 }
 
 

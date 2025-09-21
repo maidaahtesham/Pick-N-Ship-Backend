@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { courier_company } from './courier_company.entity';
 import { shipping_pricing } from './shipping_pricing.entity';
+import { Shipment } from './shipment.entity';
 
 @Entity()
 export class shipping_detail {
@@ -16,6 +17,11 @@ export class shipping_detail {
     cascade: true,
   })
   pricing: shipping_pricing[];
+
+@OneToMany(() => Shipment, (shipment) => shipment.shippingDetail)
+shipments: Shipment[];
+
+
  
   @Column({
     type: 'enum',

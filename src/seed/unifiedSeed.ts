@@ -303,63 +303,69 @@ async function unifiedSeed() {
     console.log('✅ Inserted Shipment Requests:', savedRequests);
 
     // Seed shipment with valid request_id
-    const shipments = [
-      {
-       
-        tracking_number: 'SHIP001',
-        request_id: savedRequests[0].request_id, // Use the saved request ID
-        customer_id: savedCustomers[0].id,
-        pickup_time: new Date('2025-07-31T14:00:00'),
-        delivery_time: new Date('2025-07-31T16:00:00'),
-        delivery_status: 'delivered',
-        cod_amount: 50.0,
-        parcel_type: 'regular',
-        sender_name: 'Alice Johnson',
-        receiver_name: 'Bob Smith',
-        sender_phone: '1234567890',
-        receiver_phone: '9876543210',
-        payment_mode: 'standard',
-        delivered_on: new Date('2025-07-31T16:00:00'),
-        job_status: 'completed',
-        parcel_details: 'Small package, fragile',
-        createdBy: 'system',
-        updatedBy: 'system',
-        createdOn: new Date(),
-        updatedOn: new Date(),
-        status:true,
-        courierCompany: { company_id: savedCompanies[0].company_id } as DeepPartial<courier_company>,
-            rider: { id: savedRiders[0].id }, // Relationship reference
-//         customer: { id: savedCustomers[0].id } as DeepPartial<Customer>,
-      },
-      {
-        // courier_company_id: savedCompanies[1].company_id,
-        tracking_number: 'SHIP002',
-        request_id: savedRequests[1].request_id, // Use the saved request ID
-        customer_id: savedCustomers[1].id,
-        pickup_time: new Date('2025-07-31T15:00:00'),
-        rider: { id: savedRiders[0].id }, // Relationship reference
-        delivery_time: new Date('2025-07-31T17:00:00'),
-        status: 'delivered',
-        cod_amount: 100.0,
-        parcel_type: 'large',
-        sender_name: 'Bob Smith',
-        receiver_name: 'Alice Johnson',
-        sender_phone: '9876543210',
-        receiver_phone: '1234567890',
-        shipment_type: 'express',
-        delivered_on: new Date('2025-07-31T17:00:00'),
-        job_status: 'completed',
-        parcel_details: 'Large package, heavy',
-        createdBy: 'system',
-        updatedBy: 'system',
-        createdOn: new Date(),
-        updatedOn: new Date(),
-        courierCompany: { company_id: savedCompanies[1].company_id } as DeepPartial<courier_company>,
-        customer: { id: savedCustomers[1].id } as DeepPartial<Customer>,
-      },
-    ] as DeepPartial<Shipment>[];
-    const savedShipments = await shipmentRepo.save(shipments);
-    console.log('✅ Inserted Shipments:', savedShipments);
+   const shipments: DeepPartial<Shipment>[] = [
+  {
+    tracking_number: 'SHIP001',
+    shipment_request: { request_id: savedRequests[0].request_id }, // relation instead of request_id
+    customer: { id: savedCustomers[0].id }, // relation instead of customer_id
+    pickup_time: new Date('2025-07-31T14:00:00'),
+    delivery_time: new Date('2025-07-31T16:00:00'),
+    delivery_status: 'delivered',
+    cod_amount: 50.0,
+    parcel_type: 'regular',
+    sender_name: 'Alice Johnson',
+    receiver_name: 'Bob Smith',
+    sender_phone: '1234567890',
+    receiver_phone: '9876543210',
+    payment_mode: 'standard',
+    delivered_on: new Date('2025-07-31T16:00:00'),
+    job_status: 'completed',
+    parcel_details: 'Small package, fragile',
+    createdBy: 'system',
+    updatedBy: 'system',
+    createdOn: new Date(),
+    updatedOn: new Date(),
+    status: true,
+    courierCompany: { company_id: savedCompanies[0].company_id },
+    rider: { id: savedRiders[0].id },
+  },
+  {
+    tracking_number: 'SHIP002',
+    shipment_request: { request_id: savedRequests[1].request_id }, // relation instead of request_id
+    customer: { id: savedCustomers[1].id },
+    pickup_time: new Date('2025-07-31T15:00:00'),
+    delivery_time: new Date('2025-07-31T17:00:00'),
+    delivery_status: 'delivered',
+    cod_amount: 100.0,
+    parcel_type: 'large',
+    sender_name: 'Bob Smith',
+    receiver_name: 'Alice Johnson',
+    sender_phone: '9876543210',
+    receiver_phone: '1234567890',
+    payment_mode: 'express',
+    delivered_on: new Date('2025-07-31T17:00:00'),
+    job_status: 'completed',
+    parcel_details: 'Large package, heavy',
+    createdBy: 'system',
+    updatedBy: 'system',
+    createdOn: new Date(),
+    updatedOn: new Date(),
+    status: true,
+    courierCompany: { company_id: savedCompanies[1].company_id },
+    rider: { id: savedRiders[0].id },
+  },
+];
+
+const savedShipments = await shipmentRepo.save(shipments);
+console.log('✅ Inserted Shipments:', savedShipments);
+
+// Update shipment_request with shipment reference
+savedRequests[0].shipment = savedShipments[0];
+savedRequests[1].shipment = savedShipments[1];
+await requestRepo.save(savedRequests);
+console.log('✅ Updated Shipment Requests with shipment:', savedRequests);
+
+     console.log('✅ Inserted Shipments:', savedShipments);
 
     // Update shipment_request with shipment reference
     savedRequests[0].shipment = savedShipments[0];

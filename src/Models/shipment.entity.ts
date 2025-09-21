@@ -19,11 +19,11 @@ export class Shipment {
  @Column({unique:true, nullable:true})
   tracking_number: string;
 
-  @Column({nullable:true})
-  request_id: number; /*questionable*/ 
+  // @Column({nullable:true})
+  // request_id: number; /*questionable*/ 
 
-  @Column()
-  customer_id: number;
+  // @Column()
+  // customer_id: number;
 
   @Column({nullable:true})
   pickup_time: Date;  
@@ -85,8 +85,9 @@ createdBy: string;
   @Column({length:50, nullable: true})
   updatedBy: string;
 
-    @Column({ type: 'boolean', default: null })
-  status: boolean;
+@Column({ type: 'boolean', nullable: true })
+status?: boolean;
+
 
 @OneToMany(() => Rating, (rating) => rating.shipment)
   ratings: Rating[];
@@ -111,15 +112,17 @@ rider: Rider;
 @JoinColumn({ name: 'request_id' })
 shipment_request: shipment_request;
 
-@ManyToOne(() => shipping_detail, (shippingDetail) => shippingDetail.shipping_id, { nullable: true }) // New relationship
-  @JoinColumn({ name: 'shipping_id' }) // Link to shipping_detail's shipping_id
-  shippingDetail: shipping_detail;
+@ManyToOne(() => shipping_detail, (detail) => detail.shipments, { nullable: true })
+@JoinColumn({ name: 'shipping_id' })
+shippingDetail: shipping_detail;
+
 
     @OneToMany(() => shipment_jobs, (job) => job.shipment)
     shipmentJobs: shipment_jobs[];
 
     
-    @OneToMany(() => earning, (job) => job.earning_id)
-    earnings: earning[];
+  @OneToMany(() => earning, (earning) => earning.shipment)
+earnings: earning[];
+
 
 }
