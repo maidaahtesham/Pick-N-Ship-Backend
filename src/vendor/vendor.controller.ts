@@ -11,6 +11,7 @@ import { Shipment } from '../Models/shipment.entity';
 import { GetAllActiveShipmentsDto, GetAllShipmentsDto } from 'src/ViewModel/get_all_shipment_dto';
 import { GetShipmentDetailsDto } from 'src/ViewModel/GetShipmentDetailsDto.dto';
 import { VendorOperationDTO } from 'src/ViewModel/VendorOperationDTO';
+import { profile_status_update_dto } from 'src/ViewModel/profile_status_update_dto';
 
 
 @Controller('api/vendor')
@@ -51,11 +52,11 @@ async addVendorCompleteDetails(
 
 
 @UseGuards(JwtAuthGuard)
-  @Post('add-shipping-details')
-  @HttpCode(200)
-  async addShippingDetails(@Body() data: shipping_detail_dto): Promise<Response> {
-    return this.vendorService.addShippingDetails(data);
-  }
+@Post('add-shipping-details')
+@HttpCode(200)
+async addShippingDetails(@Body() data: shipping_detail_dto): Promise<Response> {
+  return this.vendorService.addShippingDetails(data);
+}
 
   @UseGuards(JwtAuthGuard)
   @Post('get-all-jobs')
@@ -144,16 +145,25 @@ async markCodAsReceived(@Body() body: { shipmentId: number }) {
 async getShipmentDetails(@Body() getShipmentDetailsDto: GetShipmentDetailsDto) {
   return this.vendorService.getShipmentDetails(getShipmentDetailsDto);
 }
-
+@UseGuards(JwtAuthGuard)
 @Post('get-dashboard-stats')
   async getStats(@Body('companyId') companyId: number) {
     return this.vendorService.getDashboardStats(companyId);
   }
 
-
+@UseGuards(JwtAuthGuard)
 @Post('get-shipment-details-by-Id')
   async getShipmentDetailsbyId(@Body('shipmentId') shipmentId: number) {
     return this.vendorService.getShipmentDetailsById(shipmentId);
   }
+
+@UseGuards(JwtAuthGuard)
+@Post('update-profile-status') 
+async updateProfileStatus(
+  @Body() data:profile_status_update_dto): Promise<Response> {
+  return this.vendorService.updateProfileStatus(data);
+}
+
+
 
 }

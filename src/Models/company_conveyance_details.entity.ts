@@ -16,13 +16,13 @@ export class company_çonveyance_details {
 
   @OneToMany(() => company_çonveyance_pricing_details,
     (pricing) => pricing.conveyance_detail,
-    { cascade: true }
+    { cascade: true ,eager:true}
   )
   pricing: company_çonveyance_pricing_details[];
 
   @Column({
     type: 'enum',
-    enum: ['bike', 'van', 'truck'],
+    enum: ['bike', 'van', 'truck','car' ] ,
   })
   conveyance_types: string;
 

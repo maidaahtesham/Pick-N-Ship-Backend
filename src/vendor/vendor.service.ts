@@ -21,6 +21,8 @@ import { Rating } from 'src/Models/ratings.entity';
 import { Customer } from 'src/Models/customer.entity';
 import { GetShipmentDetailsByIdDto } from 'src/ViewModel/get_shipment_detail_by_id_dto';
 import { company_çonveyance_details } from 'src/Models/company_conveyance_details.entity';
+import { company_çonveyance_pricing_details } from 'src/Models/company_çonveyance_pricing_details.entity';
+import { profile_status_update_dto } from 'src/ViewModel/profile_status_update_dto';
 
 @Injectable()
 export class VendorService {
@@ -57,7 +59,10 @@ export class VendorService {
     private customerRepository: Repository<Customer>,
 
     @InjectRepository (company_çonveyance_details)
-    private companyConveyanceDetailsRepository:Repository<company_çonveyance_details>
+    private companyConveyanceDetailsRepository:Repository<company_çonveyance_details>,
+
+    @InjectRepository(company_çonveyance_pricing_details)
+    private companyConveyancePricingReposiory:Repository<company_çonveyance_pricing_details>
 
   ) {}
 
@@ -219,106 +224,96 @@ export class VendorService {
       return resp;
     }
   }
+ 
 
-  async addShippingDetails(data: shipping_detail_dto): Promise<Response> {
-    const resp= new Response();
-    try {
-      const company = await this.courierCompanyRepository.findOne({ where: { company_id: data.company_id } });
-      if (!company) throw new Error('Company not found');
+async addShippingDetails(data: shipping_detail_dto): Promise<Response> {
+  const resp = new Response();
+  try {
+    const company = await this.courierCompanyRepository.findOne({
+      where: { company_id: data.company_id },
+    });
+    if (!company) throw new Error('Company not found');
 
-      const newShipping = this.shippingDetailRepository.create({
-        company,
-        conveyance_types: data.conveyance_types,
-        conveyance_details: data.conveyance_details,
-        commission_rate: data.commission_rate,
-        createdOn:data.created_on,
-        updatedOn:data.updated_on,
+    const savedConveyances: (company_çonveyance_details & { pricing: company_çonveyance_pricing_details[] })[] = [];
 
+    for (const conveyance of data.conveyance_types) {
+      // 👀 check if conveyance already exists
+      const existingConveyance = await this.companyConveyanceDetailsRepository.findOne({
+        where: {
+          company: { company_id: data.company_id },
+          conveyance_types: conveyance.type,
+        },
       });
-      const shipping = await this.shippingDetailRepository.save(newShipping);
-      resp.success = true;
-      resp.message = 'Shipping details added successfully';
-      resp.result = shipping;
-      resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
-      return resp;
-    } catch (error) {
-      resp.success = false;
-      resp.message = 'Failed to add shipping details: ' + error.message;
-      resp.httpResponseCode = 400;
-      resp.customResponseCode = '400 Bad Request';
-      return resp;
+
+      if (existingConveyance) {
+        // 🚫 skip insert, return already exists
+        resp.success = false;
+        resp.message = `Conveyance '${conveyance.type}' already exists for this company`;
+        resp.httpResponseCode = 400;
+        resp.customResponseCode = '400 Bad Request';
+        return resp;
+      }
+
+      // 🆕 insert new conveyance
+      const newConveyance = this.companyConveyanceDetailsRepository.create({
+        company,
+        conveyance_types: conveyance.type,
+        conveyance_details: conveyance.details,
+        createdOn: data.created_on,
+        createdBy: data.createdBy,
+        updatedBy: data.updatedBy,
+        is_active: true,
+      });
+
+      const insertedConveyance = await this.companyConveyanceDetailsRepository.save(newConveyance);
+
+      // 🆕 insert pricing
+      const pricingEntities = conveyance.pricing.map((pricing) =>
+        this.companyConveyancePricingReposiory.create({
+          conveyance_detail: insertedConveyance,
+          size: pricing.size,
+          weight: pricing.weight,
+          width: pricing.width,
+          length: pricing.length,
+          height: pricing.height,
+          baseFare: pricing.baseFare,
+          pricePerKm: pricing.pricePerKm,
+          createdOn: data.created_on,
+          createdBy: data.createdBy,
+          updatedOn: data.updated_on,
+          updatedBy: data.updatedBy,
+          is_active: true,
+        })
+      );
+
+      await this.companyConveyancePricingReposiory.insert(pricingEntities);
+
+      savedConveyances.push({
+        ...insertedConveyance,
+        pricing: pricingEntities,
+      });
     }
+
+    resp.success = true;
+    resp.message = 'Shipping details inserted successfully';
+    resp.result = savedConveyances;
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    return resp;
+  } catch (error) {
+    resp.success = false;
+    resp.message = 'Failed to add shipping details: ' + error.message;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 Bad Request';
+    return resp;
   }
+}
+
+
 
  
 
-// async addVendorDetails(data: vendorDetailsDTO): Promise<Response> {
-//     const resp: Response = {
-//       success: false,
-//       message: '',
-//       result: null,
-//       httpResponseCode: null,
-//       customResponseCode: '',
-//       count: 0,
-//     };
-
-//     try {
-//       let courier_company: courier_company | null = null;
-
-//       if (data.company_id) {
-//         // Update existing record
-//         courier_company = await this.courierCompanyRepository.findOne({ where: { company_id: data.company_id } });
-//         if (!courier_company) {
-//           throw new Error('Vendor not found');
-//         }
-
-//         // Update with mapped fields
-//         courier_company = this.courierCompanyRepository.merge(courier_company, {
-//           company_name: data.company_name,
-//           logo: data.logo,
-//           username:data.username,
-//           city: data.city,
-//           company_phone_number: data.company_phone_number,
-//           pns_account_full_name:data.pns_account_full_name,        
-//           establishment_date:data.establishment_date,
-//           conveyance_types:data.conveyance_types,
-//           conveyance_details:data.conveyance_details
-//         });
-//         await this.courierCompanyRepository.save(courier_company);
-//         resp.message = 'Vendor details updated successfully';
-//       } else {
-//        const newVendorDetails = this.courierCompanyRepository.create({
-//           company_name: data.company_name,
-//           logo: data.logo,
-//           username:data.username,
-//           city: data.city,
-//           company_address:data.company_address,
-//           company_phone_number: data.company_phone_number,
-//           pns_account_full_name: data.pns_account_full_name,
-//           contact_phone: data.contact_phone,
-//           establishment_date:data.establishment_date,
-//           conveyance_types:data.conveyance_types,
-//           conveyance_details:data.conveyance_details,
-//           status: true, 
-//         });
-//         courier_company = await this.courierCompanyRepository.save(newVendorDetails);
-//         resp.message = 'Vendor details inserted successfully';
-//       }
-
-//       resp.success = true;
-//       resp.result = courier_company;
-//       resp.httpResponseCode = 200;
-//       resp.customResponseCode = '200 OK';
-//       return resp;
-//     } catch (error) {
-//       resp.success = false;
-//       resp.message = 'Failed to insert/update vendor details: ' + error.message;
-//       resp.httpResponseCode = 400;
-//       resp.customResponseCode = '400 Bad Request';
-//       return resp;
-//     }
-//   }
+ 
   async getActiveJobs({ companyId, page, limit, status, search }) {
   try {
     const query = this.shipmentRepository
@@ -802,6 +797,7 @@ async addVendorCompleteDetails(data: VendorOperationDTO): Promise<Response> {
         establishment_card_back: data.establishment_card_back,
         trade_license_expiry_date: data.trade_license_expiry_date,
         trade_license_number: data.trade_license_number,
+        establishment_card_expiry_date:data.establishment_card_expiry_date,
         createdOn,
         createdBy: data.created_by,
         updatedOn,
@@ -1060,6 +1056,37 @@ if (company && rider) {
       throw new Error(`Error fetching shipment details: ${error.message}`);
     }
   }
+async updateProfileStatus(data:profile_status_update_dto): Promise<Response> {
+  const resp = new Response();
+  try {
+    const company = await this.courierCompanyRepository.findOne({
+      where: { company_id: data.company_id },
+    });
+
+    if (!company) {
+      throw new Error('Company not found');
+    }
+
+    company.is_profile_complete = data.isProfileComplete;
+    company.updatedOn = new Date();
+    company.updatedBy = data.updated_by; 
+
+    await this.courierCompanyRepository.save(company);
+
+    resp.success = true;
+    resp.message = `Profile status updated successfully to ${data}`;
+    resp.result = { company_id: data.company_id, is_profile_complete: data.isProfileComplete};
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    return resp;
+  } catch (error) {
+    resp.success = false;
+    resp.message = 'Failed to update profile status: ' + error.message;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 Bad Request';
+    return resp;
+  }
+}
 
 
 }

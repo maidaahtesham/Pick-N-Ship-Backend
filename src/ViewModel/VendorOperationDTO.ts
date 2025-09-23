@@ -12,7 +12,8 @@ export class VendorOperationDTO {
   pns_account_full_name?: string;
   is_profile_complete?: boolean;
   registeration_status?: string;
-  registeration_date?: string
+  registeration_date?: string;
+  establishment_card_expiry_date:string; 
   created_by?: string;
   created_on?: Date;
   updated_by?: string;

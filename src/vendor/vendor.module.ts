@@ -13,9 +13,10 @@ import { Rider } from 'src/Models/rider.entity';
 import { Rating } from 'src/Models/ratings.entity';
 import { Customer } from 'src/Models/customer.entity';
 import { company_çonveyance_details } from 'src/Models/company_conveyance_details.entity';
+import { company_çonveyance_pricing_details } from 'src/Models/company_çonveyance_pricing_details.entity';
 
 @Module({
-      imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,vendor_user, company_document,shipping_detail,Rider,Rating,Customer,company_çonveyance_details])],
+      imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,vendor_user, company_document,shipping_detail,Rider,Rating,Customer,company_çonveyance_details,company_çonveyance_pricing_details])],
   
   controllers: [VendorController],
   providers: [VendorService],

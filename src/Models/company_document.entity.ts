@@ -27,14 +27,17 @@ export class company_document {
   establishment_card_back: string;
 
   @Column({ type: 'date', nullable: true })
-  trade_license_expiry_date: string;
+  establishment_card_expiry_date: string;
+
+  @Column({ type: 'date', nullable: true })
+  trade_license_expiry_date: string;  
 
   @Column({ length: 50, nullable: true })
   trade_license_number: string;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
   createdOn: Date;
-back
+ 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
   updatedOn: Date;
 
