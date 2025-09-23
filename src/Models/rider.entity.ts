@@ -71,8 +71,8 @@ updatedOn: Date;
   @OneToMany(() => Rating, (rating) => rating.rider)
     ratings: Rating[];
 
-@OneToMany(() => shipment_request, (shipmentRequest) => shipmentRequest.rider)
-  shipmentRequests: shipment_request[]; // Renamed to avoid naming conflict and follow convention
+// @OneToMany(() => shipment_request, (shipmentRequest) => shipmentRequest.rider)
+//   shipmentRequests: shipment_request[]; // Renamed to avoid naming conflict and follow convention
 
 @OneToMany(() => Shipment, (shipment) => shipment.rider)
 shipments: Shipment[];

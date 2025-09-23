@@ -40,8 +40,20 @@ export class shipment_request {
   @Column({ type: 'float', nullable: true }) // Custom width
   width: number;
 
+@Column({ type: 'text', nullable: true })
+  description: string;
+
   @Column({type:'float'})
   base_price: number;
+@Column({
+    type: 'enum',
+    enum: ['prepaid', 'cod'],
+    default: 'prepaid',
+  })
+  payment_mode: 'prepaid' | 'cod';
+
+  @Column({ type: 'float', nullable: true })
+  cod_amount: number;
 
   @Column({
     type: 'enum',
@@ -50,6 +62,9 @@ export class shipment_request {
   })
   shipment_status: string;
 
+  @Column({ type: 'text', nullable: true })
+  rejection_reason: string; // If rejected, store reason
+  
   @Column({ type: 'timestamp' })
   request_date: Date;
 
@@ -101,7 +116,7 @@ customer: Customer;
   @JoinColumn({ name: 'rider_id' }) // Ensure this matches the DB column name
   rider: Rider;
 
-  @OneToOne(() => Shipment, (shipment) => shipment.shipment_request) // Non-owning side
+  @OneToOne(() => Shipment, (shipment) => shipment.request) // Non-owning side
   shipment: Shipment;
 
   @ManyToOne(() => courier_company)

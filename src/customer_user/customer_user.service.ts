@@ -79,19 +79,18 @@ export class CustomerUserService {
       const savedRequest: shipment_request = savedRequests[0];
 
       const shipment = this.shipmentRepository.create({
-  tracking_number: `SHIP-${savedRequest.request_id}-${Date.now()}`,     
-  shipment_request: { request_id: savedRequest.request_id } as any, // relation resolve karega
-  customer: { id: customerId } as any, // ✅ customer_id ki jagah customer
+  tracking_number: `SHIP-${savedRequest.request_id}-${Date.now()}`,
+  request: { request_id: savedRequest.request_id } as any, // ✅ correct relation name
+  customer: { user_id: customerId } as any, // ✅ entity field is `user_id` not `id`
   pickup_time: requestDate,
   delivery_time: new Date(data.request_date),
-  delivery_status: 'pending',
-  cod_amount: 0,
+  tracking_status: 'awaiting_pickup', // ✅ replace delivery_status
+  // cod_amount: 0,
   parcel_type: savedRequest.parcel_type,
   sender_name: savedRequest.sender_name,
   receiver_name: savedRequest.receiver_name,
-  // sender_phone: savedRequest.,
   receiver_phone: savedRequest.receiver_phone,
-  payment_mode: 'regular', // ✅ aapki entity me `payment_mode` tha, na ke `payment_type`
+  payment_mode: 'regular',
   delivered_on: new Date(data.request_date),
   job_status: 'pending',
   parcel_details: savedRequest.special_instruction || '',
@@ -101,6 +100,8 @@ export class CustomerUserService {
   updatedBy: 'system',
   status: true,
 });
+
+ 
 
       await this.shipmentRepository.save(shipment);
 
@@ -163,9 +164,10 @@ export class CustomerUserService {
       const savedRequest: shipment_request = await this.shipmentRequestRepository.save(shipmentRequest);
 
 const shipment = await this.shipmentRepository.findOne({
-  where: {
-    shipment_request: { request_id: data.request_id },
-  },
+where: {
+  request: { request_id: data.request_id },
+},
+
   relations: ['shipment_request'], // agar relation object bhi chahiye
 });
       if (shipment) {
@@ -245,7 +247,7 @@ const shipment = await this.shipmentRepository.findOne({
       // Update associated Shipment with shipping_detail
 const shipment = await this.shipmentRepository.findOne({
   where: {
-    shipment_request: { request_id: data.request_id },
+    request: { request_id: data.request_id },
   },
   relations: ['shipment_request'], // agar relation object bhi chahiye
 });

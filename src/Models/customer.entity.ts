@@ -2,7 +2,8 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColum
 import { Rating } from "./ratings.entity";
 import { shipment_request } from "./shipment_request.entity";
 import { courier_company } from "./courier_company.entity";
-
+import { CustomerAddresses } from "./customer_addresses.entity";
+  
 @Entity()
 export class Customer {
   @PrimaryGeneratedColumn()
@@ -36,6 +37,8 @@ export class Customer {
   @JoinColumn({ name: 'company_id' }) // Foreign key column
   company: courier_company;
 
+@OneToMany(() => CustomerAddresses, (address) => address.customer)
+customer_addresses: CustomerAddresses[];
 
 
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })

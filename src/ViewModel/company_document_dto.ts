@@ -9,7 +9,9 @@ export class company_document_dto {
   @IsString()
   company_document_path?: string;
   @IsString()
-  establishment_card?: string;
+  establishment_card_front?: string;
+    @IsString()
+  establishment_card_back?: string;
   @IsString()
   trade_license_expiry_date?: string;
   @IsString()

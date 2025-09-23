@@ -85,7 +85,8 @@ async function unifiedSeed() {
         company: { company_id: savedCompanies[0].company_id } as DeepPartial<courier_company>,
         trade_license_document_path: 'aramex-tl.pdf',
         company_document_path: undefined,
-        establishment_card: 'aramex-ec.pdf',
+        establishment_card_front: 'aramex-ec.pdf',
+        establishment_card_back: 'aramex-ec.pdf',
         trade_license_expiry_date: '2026-01-15',
         trade_license_number: 'TLN-001',
         createdBy: 'system',
@@ -306,12 +307,12 @@ async function unifiedSeed() {
    const shipments: DeepPartial<Shipment>[] = [
   {
     tracking_number: 'SHIP001',
-    shipment_request: { request_id: savedRequests[0].request_id }, // relation instead of request_id
+    request: { request_id: savedRequests[0].request_id }, // relation instead of request_id
     customer: { id: savedCustomers[0].id }, // relation instead of customer_id
     pickup_time: new Date('2025-07-31T14:00:00'),
     delivery_time: new Date('2025-07-31T16:00:00'),
-    delivery_status: 'delivered',
-    cod_amount: 50.0,
+ 
+    // cod_amount: 50.0,
     parcel_type: 'regular',
     sender_name: 'Alice Johnson',
     receiver_name: 'Bob Smith',
@@ -331,12 +332,12 @@ async function unifiedSeed() {
   },
   {
     tracking_number: 'SHIP002',
-    shipment_request: { request_id: savedRequests[1].request_id }, // relation instead of request_id
+    request: { request_id: savedRequests[1].request_id }, // relation instead of request_id
     customer: { id: savedCustomers[1].id },
     pickup_time: new Date('2025-07-31T15:00:00'),
     delivery_time: new Date('2025-07-31T17:00:00'),
-    delivery_status: 'delivered',
-    cod_amount: 100.0,
+    // delivery_status: 'delivered',
+    // cod_amount: 100.0,
     parcel_type: 'large',
     sender_name: 'Bob Smith',
     receiver_name: 'Alice Johnson',

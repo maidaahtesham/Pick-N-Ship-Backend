@@ -30,7 +30,8 @@ import { company_çonveyance_pricing_details } from './Models/company_çonveyanc
 import { company_commission_rate } from './Models/company_commission_rate.entity';
 import { earning } from './Models/earnings.entity';
 import { shipment_jobs } from './Models/shipment_jobs.entity';
-@Module({
+import { CustomerAddresses } from './Models/customer_addresses.entity';
+   @Module({
   imports: [
     // Load environment variables globally
     ConfigModule.forRoot({ isGlobal: true , 
@@ -85,7 +86,9 @@ import { shipment_jobs } from './Models/shipment_jobs.entity';
         company_çonveyance_pricing_details,
         company_commission_rate,
         shipment_jobs,
-        earning
+        earning,
+       CustomerAddresses
+        
       ],
       // migrations: ['dist/migrations/*.ts'],
 

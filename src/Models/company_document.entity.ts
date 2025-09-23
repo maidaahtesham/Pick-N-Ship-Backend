@@ -10,9 +10,9 @@ export class company_document {
   company_id: number;
 
   // Relation mapped to same column
-  @ManyToOne(() => courier_company, (company) => company.company_document)
-  @JoinColumn({ name: 'company_id' })   // ✅ same column use hoga
-  company: courier_company;
+  @ManyToOne(() => courier_company, (company) => company.company_document, { eager: true })
+  @JoinColumn({ name: 'company_id' })
+  company: courier_company; 
 
   @Column({ length: 255, nullable: true })
   trade_license_document_path: string;
@@ -21,7 +21,10 @@ export class company_document {
   company_document_path: string;
 
   @Column({ length: 255, nullable: true })
-  establishment_card: string;
+  establishment_card_front: string;
+
+  @Column({ length: 255, nullable: true })
+  establishment_card_back: string;
 
   @Column({ type: 'date', nullable: true })
   trade_license_expiry_date: string;
@@ -31,7 +34,7 @@ export class company_document {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
   createdOn: Date;
-
+back
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
   updatedOn: Date;
 

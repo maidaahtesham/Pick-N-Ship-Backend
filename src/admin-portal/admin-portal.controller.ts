@@ -116,12 +116,20 @@ async getShipmentOverview(@Body('id') id: number) {
 
 
 @Post('cod')
-async getAll(@Body() body: { page?: number; limit?: number; company?: string }) {
+async getAll(@Body() body: { 
+  page?: number; 
+  limit?: number; 
+  company?: string;
+  status?: string;
+}) {
   const page = body.page ? +body.page : 1;
   const limit = body.limit ? +body.limit : 10;
   const company = body.company;
-  return this.adminPortalService.getCodShipments(page, limit, company);
+  const status = body.status; // optional
+
+  return this.adminPortalService.getCodShipments(page, limit, company, status);
 }
+
 
 
 
@@ -131,13 +139,11 @@ async getAll(@Body() body: { page?: number; limit?: number; company?: string }) 
     return this.adminPortalService.getCodSummary();
   }
 
-  // Mark a specific shipment as Paid
-  @Post(':shipmentId/pay')
-  @HttpCode(HttpStatus.OK)
-  async markAsPaid(@Param('shipmentId') shipmentId: string) {
-    await this.adminPortalService.markAsPaid(shipmentId);
-    return { message: 'Shipment marked as paid' };
-  }
+@Post('cod/mark-paid')
+async markCodAsPaid(@Body() body: { codPaymentId: number }) {
+  return this.adminPortalService.markCodAsPaid(body.codPaymentId);
+}
+
 
 
 

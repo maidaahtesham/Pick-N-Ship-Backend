@@ -18,7 +18,9 @@ import { company_çonveyance_pricing_details } from './Models/company_çonveyanc
 import { company_commission_rate } from './Models/company_commission_rate.entity';
 import { shipment_jobs } from './Models/shipment_jobs.entity';
 import { earning } from './Models/earnings.entity';
- 
+import { CustomerAddresses } from './Models/customer_addresses.entity';
+  
+  
 config(); // load .env
 
 export default new DataSource({
@@ -45,7 +47,9 @@ company_çonveyance_details,
 company_çonveyance_pricing_details,
 company_commission_rate,
 shipment_jobs,
-earning
+earning,
+CustomerAddresses
+
 
 
   ],

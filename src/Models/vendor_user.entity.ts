@@ -14,14 +14,21 @@ export class  vendor_user{
   @Column()
   last_name: string;
 
-  @Column()
+  @Column({unique:true})
   email_address: string;
 
   @Column()
   password: string;
 
-  @Column({ nullable:true})
+  @Column({unique:true, nullable:true})
   phone_number: string;
+
+
+  @Column({default:false})
+  is_email_verified: boolean;
+
+  @Column({default:false})
+  is_profile_complete: boolean;
   
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
@@ -38,7 +45,7 @@ updatedOn: Date;
 @Column({ type: 'boolean', default: null })
 status: boolean;
 
-@ManyToOne(() => courier_company, (company) => company.vendorUser) 
+@ManyToOne(() => courier_company, (company) => company.vendorUser, { nullable: true }) 
 @JoinColumn({ name: 'company_id' }) 
 company: courier_company;
 }

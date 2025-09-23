@@ -31,20 +31,44 @@ export class Shipment {
   @Column({nullable:true})
   delivery_time: Date;  
 
-  @Column({nullable:true})
-  delivery_status: string; /*questionable*/
+  // @Column({nullable:true})
+  // delivery_status: string; /*questionable*/
+
+// @Column({
+//     type: 'enum', nullable: true,
+//     enum: ['awaiting_pickup', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled']
+//   })
+//   tracking_status: string;
+   @Column({nullable:true})
+tracking_status: string;
+
+  // @Column({
+  //   type: 'enum', nullable: true,
+  //   enum: ['pending', 'in_progress', 'completed', 'cancelled']
+  // })
+  // job_status: string;
+
+      @Column({nullable:true})
+ job_status: string;
+
+@Column({ type: 'text', nullable: true })
+  current_location: string; // For real-time tracking
+
+
+  // @Column({nullable:true})
+  // cod_amount: number;  
 
   @Column({nullable:true})
-  cod_amount: number;  
-
-  @Column({nullable:true})
-  parcel_type: string;  
+  parcel_type: string;  /*questionable*/
 
     @Column({nullable:true})
   parcel_details: string;
 
   @Column({nullable:true})
   parcel_size: string;
+
+    @Column({nullable:true})
+  parcel_parameters: string;
 
   @Column({nullable:true})
   pickup_address: string;
@@ -65,13 +89,13 @@ export class Shipment {
   receiver_phone: string;
 
   @Column({nullable:true})
-  payment_mode: string;
+  payment_mode: string; //use this for payment mode
 
   @Column({nullable:true})
   delivered_on: Date;
 
-  @Column({nullable:true})
-  job_status: string;
+  // @Column({nullable:true})
+  // job_status: string;
 
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
@@ -108,9 +132,9 @@ rider: Rider;
 @OneToOne(() => CodPayment, (codPayment) => codPayment.shipment, { cascade: true })
   cod_payment: CodPayment;
 
-@OneToOne(() => shipment_request, (request) => request.shipment)
-@JoinColumn({ name: 'request_id' })
-shipment_request: shipment_request;
+@ManyToOne(() => shipment_request, (request) => request.shipment, { nullable: true })
+  @JoinColumn({ name: 'request_id' })
+  request: shipment_request;
 
 @ManyToOne(() => shipping_detail, (detail) => detail.shipments, { nullable: true })
 @JoinColumn({ name: 'shipping_id' })

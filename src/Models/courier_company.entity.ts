@@ -71,6 +71,9 @@ rejection_reason: string;
 @Column({ type: 'text', nullable: true })
 acceptance_reason: string;
 
+@Column({ type: 'boolean', default: null })
+is_profile_complete: boolean;
+
   @OneToMany(() => Rating, (rating) => rating.company, { nullable: true })
     ratings: Rating[];
 

@@ -459,7 +459,7 @@ async getCompany(companyId: number): Promise<Response> {
           city: company.city,
           trade_license_number: documentDetails.trade_license_number,
           trade_license_expiry_date: documentDetails.trade_license_expiry_date,
-          establishment_card: documentDetails.establishment_card,
+          establishment_card: documentDetails.establishment_card_front+"-"+ documentDetails.establishment_card_back,
           trade_license_document_path: documentDetails.trade_license_document_path,
           company_document_path: documentDetails.company_document_path,
           company_status: company.registeration_status,
@@ -1052,14 +1052,7 @@ async getAllJobs({ page, limit, status, search }) {
 
 async getShipmentOverview(@Body('id') id: number): Promise<Response> {
   const resp=new Response()
-  // const resp: any = {
-  //   success: false,
-  //   httpResponseCode: 500,
-  //   customResponseCode: '500 InternalServerError',
-  //   message: '',
-  //   result: null,
-  // };
-
+ 
   try {
     const overview = await this.shipmentRepository.findOne({
       where: { id },
@@ -1079,7 +1072,7 @@ async getShipmentOverview(@Body('id') id: number): Promise<Response> {
         receiver_phone: true,
         courierCompany: { company_name: true },
         rider: { rider_name: true, vehicle_type: true },
-        cod_payment: { amount_received: true, pending_amount: true, cod_amount: true },
+  cod_payment: { id: true, cod_amount: true, payment_status: true, is_paid_to_company: true, is_remitted_to_pns: true }
       },
     });
 
@@ -1106,51 +1099,41 @@ async getShipmentOverview(@Body('id') id: number): Promise<Response> {
   return resp;
 }
 
-async getCodShipments(page: number, limit: number, courier_company?: string) {
-    const query = this.codPaymentRepository
-      .createQueryBuilder('cod_payment')
-      .leftJoinAndSelect('cod_payment.shipment', 'shipment')
-      .leftJoinAndSelect('cod_payment.courierCompany', 'courierCompany'); // This join is needed for the filter
+async getCodShipments(page: number, limit: number, courier_company?: string, status?: string) {
+  const query = this.codPaymentRepository
+    .createQueryBuilder('cod_payment')
+    .leftJoinAndSelect('cod_payment.shipment', 'shipment')
+    .leftJoinAndSelect('cod_payment.courierCompany', 'courierCompany')
+    .leftJoinAndSelect('cod_payment.rider', 'rider');
 
-    // Add filtering for company if provided
-    if (courier_company) {
-      query.andWhere('courierCompany.name = :courier_company', { courier_company });
-    }
+  query.andWhere('shipment.payment_mode = :mode', { mode: 'COD' });
 
-    // Get the list of shipments for the table
-    const [data, total] = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
 
-    // Calculate total receivable amount (COD)
-    const receivableAmount = await this.codPaymentRepository
-      .createQueryBuilder('cod_payment')
-      .select('SUM(cod_payment.cod_amount)', 'sum')
-      .getRawOne();
-
-    // Calculate total pending amount
-    const pendingAmount = await this.codPaymentRepository
-      .createQueryBuilder('cod_payment')
-      .select('SUM(cod_payment.cod_amount)', 'sum')
-      .where('cod_payment.payment_status = :status', { status: 'pending' })
-      .getRawOne();
-
-    // Calculate total retrieved amount
-    const retrievedAmount = await this.codPaymentRepository
-      .createQueryBuilder('cod_payment')
-      .select('SUM(cod_payment.cod_amount)', 'sum')
-      .where('cod_payment.payment_status = :status', { status: 'retrieved' })
-      .getRawOne();
-
-    return {
-      data,
-      total,
-      receivableAmount: receivableAmount.sum || 0,
-      pendingAmount: pendingAmount.sum || 0,
-      retrievedAmount: retrievedAmount.sum || 0,
-    };
+  // Company filter (optional)
+  if (courier_company) {
+    query.andWhere('courierCompany.company_name = :courier_company', { courier_company });
   }
+
+  // Status filter (optional) → agar body me bheja ho
+  if (status) {
+    query.andWhere('cod_payment.payment_status = :status', { status });
+  }
+
+  const [data, total] = await query
+    .orderBy('cod_payment.createdOn', 'DESC')
+    .skip((page - 1) * limit)
+    .take(limit)
+    .getManyAndCount();
+
+  return {
+    data,
+    total,
+    page,
+    limit,
+  };
+}
+
+
   // Get total COD amounts (receivable, pending, retrieved)
   async getCodSummary(): Promise<{ receivable: number; pending: number; retrieved: number }> {
     const receivable = await this.codPaymentRepository
@@ -1177,21 +1160,27 @@ async getCodShipments(page: number, limit: number, courier_company?: string) {
     };
   }
 
-  // Mark a shipment as paid
-async markAsPaid(shipmentId: string): Promise<void> {
-const codPayment = await this.codPaymentRepository.findOne({
-  where: { shipment: { id: Number(shipmentId) } },
-  relations: ['shipment'],
-});
+async markCodAsPaid(codPaymentId: number) {
+  const codPayment = await this.codPaymentRepository.findOne({
+    where: { id: codPaymentId },
+  });
 
-if (!codPayment) throw new NotFoundException('Shipment not found');
-
-codPayment.payment_status = 'Paid';
-codPayment.collectedOn = new Date();
-
-await this.codPaymentRepository.save(codPayment);
-
+  if (!codPayment) {
+    throw new NotFoundException(`COD Payment with id ${codPaymentId} not found`);
   }
+
+  // ✅ Update status to "paid"
+  codPayment.payment_status = 'paid';
+  codPayment.updatedOn = new Date();
+
+  await this.codPaymentRepository.save(codPayment);
+
+  return {
+    success: true,
+    message: `COD Payment ID ${codPaymentId} marked as Paid successfully.`,
+    data: codPayment,
+  };
+}
 
 
   
