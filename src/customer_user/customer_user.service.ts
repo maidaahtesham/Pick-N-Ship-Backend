@@ -16,6 +16,8 @@ import { RegularBookingDTO } from 'src/ViewModel/RegularBookingDTO';
 import { customer_signup_dto } from 'src/ViewModel/customer_signup_dto';
 import * as bcrypt from 'bcryptjs';
 import { GetAllShipmentsCustomerDto } from 'src/ViewModel/get_all_shipment_customer_dto';
+import { CustomerAddresses } from 'src/Models/customer_addresses.entity';
+import { GetAddressesDto } from 'src/ViewModel/get-addresses.dto';
 
 
 
@@ -32,110 +34,113 @@ export class CustomerUserService {
     private shippingDetailRepository: Repository<shipping_detail>,
     @InjectRepository(courier_company)
     private courierCompanyRepository: Repository<courier_company>,
+    @InjectRepository(CustomerAddresses)
+    private addressRepository: Repository<CustomerAddresses>,
+
   ) {}
 
      
 
 
-  async createShipmentRequest(customerId: number, data: ShipmentRequestDTO): Promise<Response> {
-    const resp= new Response();
+//   async createShipmentRequest(customerId: number, data: ShipmentRequestDTO): Promise<Response> {
+//     const resp= new Response();
 
-    try {
-      const customer = await this.customerRepository.findOne({ where: { id: customerId }, relations: ['company'] });
-      if (!customer) throw new BadRequestException('Customer not found');
+//     try {
+//       const customer = await this.customerRepository.findOne({ where: { id: customerId }, relations: ['company'] });
+//       if (!customer) throw new BadRequestException('Customer not found');
 
-      const requestDate = new Date(data.request_date);
-      if (isNaN(requestDate.getTime())) throw new BadRequestException('Invalid request_date provided');
+//       const requestDate = new Date(data.request_date);
+//       if (isNaN(requestDate.getTime())) throw new BadRequestException('Invalid request_date provided');
 
-      const shipmentRequest = this.shipmentRequestRepository.create({
-        customer,
-        pickup_location: data.pickup_location,
-        dropoff_location: data.dropoff_location,
-        parcel_type: data.parcel_type,
-        package_size: data.package_size,
-        parcel_photos:data.parcel_photos,
-        weight: data.weight,
-        length: data.length,
-        height: data.height,
-        base_price: data.base_price,
-        pickup_time_slot: data.pickup_time_slot,
-        payment_status: data.payment_status || 'unpaid',
-        sender_name: data.sender_name,
-        receiver_name: data.receiver_name,
-        receiver_phone: data.receiver_phone,
-        // sender_phone: data.se,
-        special_instruction: data.special_instruction,
-        shipment_status: data.shipment_status || 'pending',
-        request_date: requestDate,
-        createdBy: data.created_by || 'system',
-        updatedBy: data.updated_by || 'system',
-        createdOn: data.created_on ? new Date(data.created_on) : new Date(),
-        updatedOn: data.updated_on ? new Date(data.updated_on) : new Date(),
-        status: data.is_active !== undefined ? data.is_active : true,
-        rider: data.rider || null,
-        company: customer.company || null,
-      });
+//       const shipmentRequest = this.shipmentRequestRepository.create({
+//         // customer,
+//         pickup_location: data.pickup_location,
+//         dropoff_location: data.dropoff_location,
+//         parcel_type: data.parcel_type,
+//         package_size: data.package_size,
+//         parcel_photos:data.parcel_photos,
+//         weight: data.weight,
+//         length: data.length,
+//         height: data.height,
+//         base_price: data.base_price,
+//         pickup_time_slot: data.pickup_time_slot,
+//         payment_status: data.payment_status || 'unpaid',
+//         sender_name: data.sender_name,
+//         receiver_name: data.receiver_name,
+//         receiver_phone: data.receiver_phone,
+//         // sender_phone: data.se,
+//         special_instruction: data.special_instruction,
+//         shipment_status: data.shipment_status || 'pending',
+//         request_date: requestDate,
+//         createdBy: data.created_by || 'system',
+//         updatedBy: data.updated_by || 'system',
+//         createdOn: data.created_on ? new Date(data.created_on) : new Date(),
+//         updatedOn: data.updated_on ? new Date(data.updated_on) : new Date(),
+//         status: data.is_active !== undefined ? data.is_active : true,
+//         rider: data.rider || null,
+//         company: customer.company || null,
+//       });
 
-      const savedRequests: shipment_request[] = await this.shipmentRequestRepository.save([shipmentRequest]);
-      const savedRequest: shipment_request = savedRequests[0];
+//       const savedRequests: shipment_request[] = await this.shipmentRequestRepository.save([shipmentRequest]);
+//       const savedRequest: shipment_request = savedRequests[0];
 
-      const shipment = this.shipmentRepository.create({
-  tracking_number: `SHIP-${savedRequest.request_id}-${Date.now()}`,
-  request: { request_id: savedRequest.request_id } as any, // ✅ correct relation name
-  customer: { user_id: customerId } as any, // ✅ entity field is `user_id` not `id`
-  pickup_time: requestDate,
-  delivery_time: new Date(data.request_date),
-  tracking_status: 'awaiting_pickup', // ✅ replace delivery_status
-  // cod_amount: 0,
-  parcel_type: savedRequest.parcel_type,
-  sender_name: savedRequest.sender_name,
-  receiver_name: savedRequest.receiver_name,
-  receiver_phone: savedRequest.receiver_phone,
-  payment_mode: 'regular',
-  delivered_on: new Date(data.request_date),
-  job_status: 'pending',
-  parcel_details: savedRequest.special_instruction || '',
-  rider: data.rider ? { rider_id: data.rider.id } as any : null,
-  courierCompany: savedRequest.company ? { company_id: savedRequest.company.company_id } as any : null,
-  createdBy: 'system',
-  updatedBy: 'system',
-  status: true,
-});
+//       const shipment = this.shipmentRepository.create({
+//   tracking_number: `SHIP-${savedRequest.request_id}-${Date.now()}`,
+//   request: { request_id: savedRequest.request_id } as any, // ✅ correct relation name
+//   customer: { user_id: customerId } as any, // ✅ entity field is `user_id` not `id`
+//   pickup_time: requestDate,
+//   delivery_time: new Date(data.request_date),
+//   tracking_status: 'awaiting_pickup', // ✅ replace delivery_status
+//   // cod_amount: 0,
+//   parcel_type: savedRequest.parcel_type,
+//   sender_name: savedRequest.sender_name,
+//   receiver_name: savedRequest.receiver_name,
+//   receiver_phone: savedRequest.receiver_phone,
+//   payment_mode: 'regular',
+//   delivered_on: new Date(data.request_date),
+//   job_status: 'pending',
+//   parcel_details: savedRequest.special_instruction || '',
+//   rider: data.rider ? { rider_id: data.rider.id } as any : null,
+//   courierCompany: savedRequest.company ? { company_id: savedRequest.company.company_id } as any : null,
+//   createdBy: 'system',
+//   updatedBy: 'system',
+//   status: true,
+// });
 
  
 
-      await this.shipmentRepository.save(shipment);
+//       await this.shipmentRepository.save(shipment);
 
-      resp.success = true;
-      resp.message = 'Shipment request created successfully';
-      resp.result = {
-        request_id: savedRequest.request_id,
-        pickup_location: savedRequest.pickup_location,
-        dropoff_location: savedRequest.dropoff_location,
-        parcel_type: savedRequest.parcel_type,
-        package_size: savedRequest.package_size,
-        weight: savedRequest.weight,
-        length: savedRequest.length,
-        height: savedRequest.height,
-        base_price: savedRequest.base_price,
-        shipment_status: savedRequest.shipment_status,
-        request_date: savedRequest.request_date,
-        createdOn: savedRequest.createdOn,
-        updatedOn: savedRequest.updatedOn,
-        createdBy: savedRequest.createdBy,
-        updatedBy: savedRequest.updatedBy,
-      };
-      resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
-      return resp;
-    } catch (error) {
-      resp.success = false;
-      resp.message = 'Failed to create shipment request: ' + error.message;
-      resp.httpResponseCode = 400;
-      resp.customResponseCode = '400 Bad Request';
-      return resp;
-    }
-  }
+//       resp.success = true;
+//       resp.message = 'Shipment request created successfully';
+//       resp.result = {
+//         request_id: savedRequest.request_id,
+//         pickup_location: savedRequest.pickup_location,
+//         dropoff_location: savedRequest.dropoff_location,
+//         parcel_type: savedRequest.parcel_type,
+//         package_size: savedRequest.package_size,
+//         weight: savedRequest.weight,
+//         length: savedRequest.length,
+//         height: savedRequest.height,
+//         base_price: savedRequest.base_price,
+//         shipment_status: savedRequest.shipment_status,
+//         request_date: savedRequest.request_date,
+//         createdOn: savedRequest.createdOn,
+//         updatedOn: savedRequest.updatedOn,
+//         createdBy: savedRequest.createdBy,
+//         updatedBy: savedRequest.updatedBy,
+//       };
+//       resp.httpResponseCode = 200;
+//       resp.customResponseCode = '200 OK';
+//       return resp;
+//     } catch (error) {
+//       resp.success = false;
+//       resp.message = 'Failed to create shipment request: ' + error.message;
+//       resp.httpResponseCode = 400;
+//       resp.customResponseCode = '400 Bad Request';
+//       return resp;
+//     }
+//   }
 
   async createRegularBooking(customerId: number, data: RegularBookingDTO): Promise<Response> {
     const resp= new Response();
@@ -312,8 +317,7 @@ const shipment = await this.shipmentRepository.findOne({
 
       let customer: Customer | null = null;
 
-      const company = await this.courierCompanyRepository.findOne({ where: { company_id: data.company_id } });
-      if (!company) throw new Error("Company not found");
+      
 
       if (data.customer_id) {
         customer = await this.customerRepository.findOne({ where: { id: data.customer_id  } });
@@ -341,7 +345,7 @@ const shipment = await this.shipmentRepository.findOne({
           updatedOn: new Date(),
           updatedBy: data.updatedBy,          
           is_email_verified:data.is_email_verified,
-          company:company,
+          
           status:true
         });
         await this.customerRepository.save(customer);
@@ -363,7 +367,7 @@ const shipment = await this.shipmentRepository.findOne({
           updatedOn: new Date(),
           is_email_verified:data.is_email_verified,
           status:true,
-          company:company,
+      
 
 
           
@@ -462,5 +466,41 @@ async getAllShipments({
     }
 
   }
+
+
+
+async getAddresses({ customer_id, page = 1, limit = 10 }: GetAddressesDto) {
+    try {
+      const query = this.addressRepository
+        .createQueryBuilder('address')
+        .where('address.customer_id = :customerId', { customerId: customer_id });
+
+      query.skip((page - 1) * limit).take(limit);
+
+      const [data, total] = await query.getManyAndCount();
+
+      return {
+        success: true,
+        message: 'Addresses fetched successfully',
+        data: {
+          addresses: data,
+          pagination: {
+            total,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            limit,
+          },
+        },
+      };
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      return {
+        success: false,
+        message: 'Failed to fetch addresses',
+        error: error.message,
+      };
+    }
+  }
+
 
 }

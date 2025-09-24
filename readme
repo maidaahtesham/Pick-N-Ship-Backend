@@ -3,6 +3,7 @@
 
 
 
+# ssh -i "D:/picknship-ec2-key.pem" ec2-user@18.132.206.173
 
 ## Go to backend folder
 # cd /home/ec2-user/Pick-N-Ship-Backend

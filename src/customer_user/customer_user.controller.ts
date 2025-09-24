@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ShipmentRequestDTO } from '../ViewModel/shipmentRequestDTO';
 import { RegularBookingDTO } from '../ViewModel/RegularBookingDTO';
 import { GetAllShipmentsCustomerDto } from 'src/ViewModel/get_all_shipment_customer_dto';
+import { GetAddressesDto } from 'src/ViewModel/get-addresses.dto';
 
 // @UseGuards(JwtAuthGuard)
 
@@ -19,12 +20,12 @@ constructor(private readonly customerUserService: CustomerUserService) {}
         
  
  
-@Post('shipment-request')
-  @HttpCode(200)
-  async createShipmentRequest(@Request() req, @Body() body: ShipmentRequestDTO): Promise<Response> {
-    const customerId = req.user.sub; // Assuming JWT payload includes sub as customerId
-    return this.customerUserService.createShipmentRequest(customerId, body);
-  }
+// @Post('shipment-request')
+//   @HttpCode(200)
+//   async createShipmentRequest(@Request() req, @Body() body: ShipmentRequestDTO): Promise<Response> {
+//     const customerId = req.user.sub; // Assuming JWT payload includes sub as customerId
+//     return this.customerUserService.createShipmentRequest(customerId, body);
+//   }
 
 
 @Post('create-regular-booking')
@@ -47,5 +48,9 @@ async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
   async getAllShipments(@Body() getAllShipmentsDto: GetAllShipmentsCustomerDto) {
     return this.customerUserService.getAllShipments(getAllShipmentsDto);
   }
-
+@UseGuards(JwtAuthGuard)
+  @Post('get-addresses')
+  async getAddresses(@Body() getAddressesDto: GetAddressesDto) {
+    return this.customerUserService.getAddresses(getAddressesDto);
+  }
 }

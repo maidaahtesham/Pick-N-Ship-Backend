@@ -1,4 +1,4 @@
-import { IsEmail, IsNumber, IsString, MinLength } from "class-validator";
+import { IsEmail, IsNumber, IsOptional, IsString, MinLength } from "class-validator";
 
 export class customer_signup_dto{
 
@@ -34,7 +34,7 @@ export class customer_signup_dto{
   createdOn: Date;
   updatedBy: string;
 
-  company_id:number;
+ 
 
 
 }

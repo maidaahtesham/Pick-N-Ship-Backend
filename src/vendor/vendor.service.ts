@@ -575,8 +575,7 @@ async getAllRiders(
 
 
 async getShipmentCodDetails(
-  shipmentId?: number | null,
-  companyId?: number | null,
+  company_id?: number | null,
   status?: string | null,
   page = 1,
   limit = 10,
@@ -584,36 +583,39 @@ async getShipmentCodDetails(
   const resp = new Response();
 
   try {
+ 
+    if (!company_id) {
+      resp.success = true;
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      resp.message = 'CompanyId is required to fetch COD shipments';
+      resp.result = [];
+      resp.count = 0;
+      return resp;
+    }
+
     const query = this.shipmentRepository
-      .createQueryBuilder('shipment')
-      .leftJoinAndSelect('shipment.cod_payment', 'cod_payment')
-      .leftJoinAndSelect('cod_payment.rider', 'rider')
-      .leftJoinAndSelect('cod_payment.courierCompany', 'courierCompany')
-      .where('shipment.payment_mode = :mode', { mode: 'COD' });
+  .createQueryBuilder('shipment')
+  .leftJoinAndSelect('shipment.cod_payment', 'cod_payment')
+  .leftJoinAndSelect('cod_payment.rider', 'rider')
+  .leftJoinAndSelect('shipment.courierCompany', 'courierCompany')
+  .leftJoinAndSelect('cod_payment.courierCompany', 'paymentCompany')
+  .where('courierCompany.company_id = :company_id', { company_id})
+  .andWhere('shipment.payment_mode = :mode', { mode: 'COD' });
 
-    // ✅ Shipment filter
-    if (shipmentId !== null && shipmentId !== undefined) {
-      query.andWhere('shipment.id = :shipmentId', { shipmentId });
-    }
 
-    // ✅ Company filter
-    if (companyId !== null && companyId !== undefined) {
-      query.andWhere('courierCompany.company_id = :companyId', { companyId });
-    }
-
-    // ✅ Status filter
-    if (status !== null && status !== undefined && status.trim() !== '') {
+ 
+    if (status && status.trim() !== '') {
       query.andWhere('cod_payment.payment_status = :status', { status });
     }
 
-    // ✅ Pagination + sorting
+    // ✅ Pagination
     const [data, total] = await query
       .orderBy('shipment.createdOn', 'DESC')
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
 
-    // ✅ Response wrap
     resp.success = true;
     resp.httpResponseCode = 200;
     resp.customResponseCode = '200 OK';
@@ -632,6 +634,11 @@ async getShipmentCodDetails(
     return resp;
   }
 }
+
+
+
+
+
 
 
 

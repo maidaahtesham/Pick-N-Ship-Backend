@@ -117,7 +117,7 @@ async getAllRiders(@Body() body: any) {
 @Post('shipment/cod')
 async getShipmentCod(@Body() body: { 
   shipmentId?: number | null; 
-  companyId?: number | null;
+  company_id?: number | null;
   status?: string | null;
   page?: number;
   limit?: number;
@@ -126,8 +126,8 @@ async getShipmentCod(@Body() body: {
   const limit = body.limit && body.limit > 0 ? body.limit : 10;
 
   return this.vendorService.getShipmentCodDetails(
-    body.shipmentId ?? null,
-    body.companyId ?? null,
+ 
+    body.company_id ?? null,
     body.status ?? null,
     page,
     limit,
