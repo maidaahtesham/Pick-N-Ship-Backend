@@ -403,112 +403,134 @@ async getCompany(companyId: number): Promise<Response> {
     const company = await this.companyRepository.findOne({
       where: { company_id: companyId, status: true },
       relations: [
-         'vendorUser',
+        'vendorUser',
         'company_document',
         'company_conveyance_details',
         'company_conveyance_details.pricing',
-        'commissionRates'     
-       ],
+        'commissionRates',
+      ],
     });
 
-    if (company) {
-      const email_address = company.vendorUser?.[0]?.email_address || null;
-      const documentDetails: Partial<company_document> = company.company_document?.[0] || {};
-
-      // ✅ Group conveyance details by type
-      const conveyanceGrouped = company.company_conveyance_details.reduce((acc, detail) => {
-        if (!acc[detail.conveyance_types]) {
-          acc[detail.conveyance_types] = [];
-        }
-
-        // Pricing list
-        const pricingList = detail.pricing?.map(p => ({
-          pricing_id: p.pricing_id,
-          size: p.size,
-          weight: p.weight,
-          width: p.width,
-          length: p.length,
-          height: p.height,
-          baseFare: p.baseFare,
-          pricePerKm: p.pricePerKm,
-        })) || [];
-
-        acc[detail.conveyance_types].push({
-          conveyance_id: detail.id,
-
-          is_active: detail.is_active,
-          pricing: pricingList,
-        });
-
-        return acc;
-      }, {} as Record<string, any[]>);
-
-// const getRatingLabel = (score: number): string => {
-//   if (score >= 80) return 'Great';
-//   if (score >= 50) return 'Good';
-//   return 'Poor';
-// };
-      const result = {
-        company: {
-          company_id: company.company_id,
-          company_name: company.company_name,
-          status: company.status,
-          logo: company.logo,
-          company_phone_number: company.company_phone_number,
-          email_address: company.company_email_address || email_address,
-          city: company.city,
-          trade_license_number: documentDetails.trade_license_number,
-          trade_license_expiry_date: documentDetails.trade_license_expiry_date,
-          establishment_card: documentDetails.establishment_card_front+"-"+ documentDetails.establishment_card_back,
-          trade_license_document_path: documentDetails.trade_license_document_path,
-          company_document_path: documentDetails.company_document_path,
-          company_status: company.registeration_status,
-          
-        },
-// ratings: company.ratings.map(rating => {
-//     const avg = (
-//       (rating.rider_behavior_score +
-//         rating.on_time_delivery_score +
-//         rating.affordability_score) / 3 / 20 // Convert 0-100 to 0-5 scale
-//     ).toFixed(1);
-
-//     return {
-//       rating_id: rating.id,
-//       rating_value: avg,
-//       rider_behavior_score: `${rating.rider_behavior_score}% (${getRatingLabel(rating.rider_behavior_score)})`,
-//       on_time_delivery_score: `${rating.on_time_delivery_score}% (${getRatingLabel(rating.on_time_delivery_score)})`,
-//       affordability_score: `${rating.affordability_score}% (${getRatingLabel(rating.affordability_score)})`,
-//       review: rating.review,
-//       created_at: rating.created_at,
-//       customer_name: rating.customer?.firstname || null, // Assuming Customer entity has a 'name' field
-//     };
-//   }),
-        company_commission_rate: company.commissionRates.map(company_commission_rate=> {
-          return {
-            id: company_commission_rate.id,
-            commission_type: company_commission_rate.commission_type,
-            commission_rate: company_commission_rate.commission_rate,
-            createdOn: company_commission_rate.createdOn,
-            updatedOn: company_commission_rate.updatedOn,
-          };
-
-        }) ,
-
-
-        conveyanceDetails: conveyanceGrouped,
-      };
-
-      resp.success = true;
-      resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
-      resp.message = 'Get Company Details';
-      resp.result = result;
-      resp.count = 1;
+    if (!company) {
+      resp.success = false;
+      resp.message = 'Company record does not exist';
       return resp;
     }
 
-    resp.success = false;
-    resp.message = 'Company record does not exist';
+     const email_address = company.vendorUser?.[0]?.email_address || company.company_email_address || null;
+
+     const documentDetails: Partial<company_document> = company.company_document?.[0] || {};
+
+     const conveyanceGrouped = company.company_conveyance_details.reduce((acc, detail) => {
+      if (!acc[detail.conveyance_types]) {
+        acc[detail.conveyance_types] = [];
+      }
+
+      // Pricing list with all fields
+      const pricingList = detail.pricing?.map(p => ({
+        pricing_id: p.pricing_id,
+        size: p.size,
+        weight: p.weight,
+        width: p.width,
+        length: p.length,
+        height: p.height,
+        baseFare: p.baseFare,
+        pricePerKm: p.pricePerKm,
+        createdOn: p.createdOn,
+        updatedOn: p.updatedOn,
+        createdBy: p.createdBy,
+        updatedBy: p.updatedBy,
+        is_active: p.is_active,
+      })) || [];
+
+      acc[detail.conveyance_types].push({
+        conveyance_id: detail.id,
+        conveyance_types: detail.conveyance_types,
+        conveyance_details: detail.conveyance_details,
+        is_active: detail.is_active,
+        createdOn: detail.createdOn,
+        updatedOn: detail.updatedOn,
+        createdBy: detail.createdBy,
+        updatedBy: detail.updatedBy,
+        pricing: pricingList,
+      });
+
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // Map commission rates with all fields
+    const commissionRates = company.commissionRates.map(rate => ({
+      id: rate.id,
+      commission_type: rate.commission_type,
+      commission_rate: rate.commission_rate,
+      createdOn: rate.createdOn,
+      updatedOn: rate.updatedOn,
+      createdBy: rate.createdBy,
+      updatedBy: rate.updatedBy,
+      status: rate.status,
+    }));
+
+    // Construct the result with all company details
+    const result = {
+      company: {
+        company_id: company.company_id,
+        company_name: company.company_name,
+        username: company.username,
+        logo: company.logo,
+        city: company.city,
+        company_address: company.company_address,
+        company_email_address: company.company_email_address,
+        company_phone_number: company.company_phone_number,
+        pns_account_full_name: company.pns_account_full_name,
+        registeration_date: company.registeration_date,
+        registeration_status: company.registeration_status,
+        createdOn: company.createdOn,
+        updatedOn: company.updatedOn,
+        createdBy: company.createdBy,
+        updatedBy: company.updatedBy,
+        status: company.status,
+        rejection_reason: company.rejection_reason,
+        acceptance_reason: company.acceptance_reason,
+        is_profile_complete: company.is_profile_complete,
+        email_address, // From vendorUser or company_email_address
+        trade_license_number: documentDetails.trade_license_number,
+        trade_license_expiry_date: documentDetails.trade_license_expiry_date,
+        establishment_card_front:  documentDetails.establishment_card_front ,
+        establishment_card_back: documentDetails.establishment_card_back ,
+        establishment_card_expiry_date:documentDetails.establishment_card_expiry_date,
+        trade_license_document_path: documentDetails.trade_license_document_path,
+        company_document_path: documentDetails.company_document_path,
+      },
+      vendorUser: company.vendorUser.map(user => ({
+        email_address: user.email_address,
+        // Add other vendor_user fields if available in your entity
+      })),
+      company_document: company.company_document.map(doc => ({
+        document_id: doc.document_id,
+        trade_license_document_path: doc.trade_license_document_path,
+        company_document_path: doc.company_document_path,
+        establishment_card_front: doc.establishment_card_front,
+        establishment_card_back: doc.establishment_card_back,
+        establishment_card_expiry_date: doc.establishment_card_expiry_date,
+        trade_license_expiry_date: doc.trade_license_expiry_date,
+        trade_license_number: doc.trade_license_number,
+        createdOn: doc.createdOn,
+        updatedOn: doc.updatedOn,
+        createdBy: doc.createdBy,
+        updatedBy: doc.updatedBy,
+        is_active: doc.is_active,
+      })),
+      company_commission_rate: commissionRates,
+      conveyanceDetails: conveyanceGrouped,
+      // Other relations (e.g., ratings, shipments) can be added if needed
+    };
+
+    resp.success = true;
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    resp.message = 'Get Company Details';
+    resp.result = result;
+    resp.count = 1;
     return resp;
   } catch (ex) {
     resp.success = false;
@@ -519,7 +541,6 @@ async getCompany(companyId: number): Promise<Response> {
     return resp;
   }
 }
-
 
 
   async editCompany(data: edit_courier_company_dto): Promise<Response> {

@@ -15,6 +15,7 @@ import { SelectVehicleDTO } from 'src/ViewModel/SelectVehicleDTO';
 import { RegularBookingDTO } from 'src/ViewModel/RegularBookingDTO';
 import { customer_signup_dto } from 'src/ViewModel/customer_signup_dto';
 import * as bcrypt from 'bcryptjs';
+import { GetAllShipmentsCustomerDto } from 'src/ViewModel/get_all_shipment_customer_dto';
 
 
 
@@ -403,6 +404,63 @@ const shipment = await this.shipmentRepository.findOne({
   }
 
 
+async getAllShipments({
+    customer_id,
+    page = 1,
+    limit = 10,
+    status,
+    search,
+  }: GetAllShipmentsCustomerDto) {
+    try {
+       const query = this.shipmentRepository
+        .createQueryBuilder('shipment')
+         .leftJoinAndSelect('shipment.customer', 'customer')
+         .leftJoinAndSelect('shipment.rider', 'rider')
+        .leftJoinAndSelect('shipment.courierCompany', 'company')
+         .where('shipment.customer_id = :customerId', { customerId: customer_id });
 
+       if (status) {
+        query.andWhere('shipment.job_status = :status', { status });
+      }
+
+       if (search) {
+        query.andWhere(
+          `(shipment.tracking_number ILIKE :search OR
+            shipment.sender_name ILIKE :search OR
+            shipment.receiver_name ILIKE :search OR
+            rider.rider_name ILIKE :search)`,
+          { search: `%${search}%` },
+        );
+      }
+
+       query.orderBy('shipment.createdOn', 'DESC');
+
+       query.skip((page - 1) * limit).take(limit);
+
+       const [data, total] = await query.getManyAndCount();
+
+      return {
+        success: true,
+        message: 'Shipments fetched successfully',
+        data: {
+          shipments: data,
+          pagination: {
+            total,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            limit,
+          },
+        },
+      };
+    } catch (error) {
+      console.error('Error fetching customer shipments:', error);
+      return {
+        success: false,
+        message: 'Failed to fetch shipments',
+        error: error.message,
+      };
+    }
+
+  }
 
 }

@@ -6,6 +6,7 @@ import { Response } from '../ViewModel/response';
 import { JwtService } from '@nestjs/jwt';
 import { ShipmentRequestDTO } from '../ViewModel/shipmentRequestDTO';
 import { RegularBookingDTO } from '../ViewModel/RegularBookingDTO';
+import { GetAllShipmentsCustomerDto } from 'src/ViewModel/get_all_shipment_customer_dto';
 
 // @UseGuards(JwtAuthGuard)
 
@@ -39,5 +40,12 @@ async createRegularBooking(@Request() req, @Body() body: RegularBookingDTO): Pro
 async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
     return this.customerUserService.createCustomerUser(data);
 }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Post('get-all-shipments')
+  async getAllShipments(@Body() getAllShipmentsDto: GetAllShipmentsCustomerDto) {
+    return this.customerUserService.getAllShipments(getAllShipmentsDto);
+  }
 
 }
