@@ -145,24 +145,24 @@ async markCodAsReceived(@Body() body: { shipmentId: number }) {
 async getShipmentDetails(@Body() getShipmentDetailsDto: GetShipmentDetailsDto) {
   return this.vendorService.getShipmentDetails(getShipmentDetailsDto);
 }
-@UseGuards(JwtAuthGuard)
-@Post('get-dashboard-stats')
-  async getStats(@Body('companyId') companyId: number) {
-    return this.vendorService.getDashboardStats(companyId);
-  }
+// @UseGuards(JwtAuthGuard)
+// @Post('get-dashboard-stats')
+//   async getStats(@Body('companyId') companyId: number) {
+//     return this.vendorService.getDashboardStats(companyId);
+//   }
 
-@UseGuards(JwtAuthGuard)
-@Post('get-shipment-details-by-Id')
-  async getShipmentDetailsbyId(@Body('shipmentId') shipmentId: number) {
-    return this.vendorService.getShipmentDetailsById(shipmentId);
-  }
+// @UseGuards(JwtAuthGuard)
+// @Post('get-shipment-details-by-Id')
+//   async getShipmentDetailsbyId(@Body('shipmentId') shipmentId: number) {
+//     return this.vendorService.getShipmentDetailsById(shipmentId);
+//   }
 
-@UseGuards(JwtAuthGuard)
-@Post('update-profile-status') 
-async updateProfileStatus(
-  @Body() data:profile_status_update_dto): Promise<Response> {
-  return this.vendorService.updateProfileStatus(data);
-}
+// @UseGuards(JwtAuthGuard)
+// @Post('update-profile-status') 
+// async updateProfileStatus(
+//   @Body() data:profile_status_update_dto): Promise<Response> {
+//   return this.vendorService.updateProfileStatus(data);
+// }
 
 
 

@@ -9,8 +9,9 @@ import { CodPayment } from './cod_payment.entity';
 import { shipment_jobs } from './shipment_jobs.entity';
 import { earning } from './earnings.entity';
 import { text } from 'stream/consumers';
+import { parcel_details } from './parcel_detail.entity';
 
-// Shipment Entity
+ 
 @Entity()
 export class Shipment {
   @PrimaryGeneratedColumn()
@@ -19,83 +20,77 @@ export class Shipment {
  @Column({unique:true, nullable:true})
   tracking_number: string;
 
-  // @Column({nullable:true})
-  // request_id: number; /*questionable*/ 
+ @Column({ type: 'varchar', length: 255, nullable: true })  
+  pickup_location: string; 
 
-  // @Column()
-  // customer_id: number;
+    @Column({
+    type: 'enum',
+    enum: ['pending', 'accepted', 'declined'],
+    default: 'pending',
+  })
+  shipment_status: string;
 
+  @Column({type:'enum',
+  enum:['regular', 'bulk'], nullable:true
+})
+  parcel_type: string;
+
+
+@Column({
+    type: 'enum',
+    enum: ['prepaid', 'cod'],
+    default: 'prepaid',
+  })
+  payment_mode: 'prepaid' | 'cod';
+
+
+
+ @Column({nullable:true})
+ shipment_created_on: Date;  
+ 
   @Column({nullable:true})
   pickup_time: Date;  
+ 
 
-  @Column({nullable:true})
-  delivery_time: Date;  
-
-  // @Column({nullable:true})
-  // delivery_status: string; /*questionable*/
-
-// @Column({
-//     type: 'enum', nullable: true,
-//     enum: ['awaiting_pickup', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled']
-//   })
-//   tracking_status: string;
-   @Column({nullable:true})
-tracking_status: string;
 
   // @Column({
-  //   type: 'enum', nullable: true,
-  //   enum: ['pending', 'in_progress', 'completed', 'cancelled']
+  //   type: 'enum',
+  //   enum: ['small', 'medium', 'large', 'custom'], nullable:true
   // })
-  // job_status: string;
+  // package_size: string;
 
-      @Column({nullable:true})
- job_status: string;
+  // @Column({type:'float', nullable:true})
+  // weight: number;
 
-@Column({ type: 'text', nullable: true })
-  current_location: string; // For real-time tracking
+  // @Column({type:'float' , nullable:true})
+  // length: number;
 
+  // @Column({type:'float' , nullable:true})
+  // height: number;
 
-  // @Column({nullable:true})
-  // cod_amount: number;  
+  // @Column({ type: 'float', nullable: true })  
+  // width: number;
 
-  @Column({nullable:true})
-  parcel_type: string;  /*questionable*/
+// @Column({ type: 'text', nullable: true })
+//   description: string;
 
-    @Column({nullable:true})
-  parcel_details: string;
+//   @Column({type:'float'})
+//   base_price: number;
+//   @Column({ type: 'float', nullable: true })
+//   cod_amount: number;
+//   @Column({nullable:true})
+//   receiver_name: string;
+//   @Column({nullable:true})
+//   receiver_phone: string;
+//  @Column({
+//     type: 'enum',
+//     enum: ['paid', 'unpaid'],
+//     default: 'unpaid',
+//   })
+//   payment_status: string; 
 
-  @Column({nullable:true})
-  parcel_size: string;
-
-    @Column({nullable:true})
-  parcel_parameters: string;
-
-  @Column({nullable:true})
-  pickup_address: string;
-
-  @Column({nullable:true})
-  delivery_address: string;
-
-  @Column({nullable:true})
-  sender_name: string;
-
-  @Column({nullable:true})
-  receiver_name: string;
-
-  @Column({nullable:true})
-  sender_phone: string;
-
-  @Column({nullable:true})
-  receiver_phone: string;
-
-  @Column({nullable:true})
-  payment_mode: string; //use this for payment mode
-
-  @Column({nullable:true})
-  delivered_on: Date;
-
-  // @Column({nullable:true})
-  // job_status: string;
+//   @Column({ type: 'text', nullable: true })
+//   special_instruction: string;
 
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
@@ -113,40 +108,33 @@ createdBy: string;
 status?: boolean;
 
 
-@OneToMany(() => Rating, (rating) => rating.shipment)
-  ratings: Rating[];
+// @OneToMany(() => Rating, (rating) => rating.shipment)
+//   ratings: Rating[];
 
 @ManyToOne(() => courier_company, (company) => company.shipments)
 @JoinColumn({ name: 'company_id' })
 courierCompany: courier_company;
 
 @ManyToOne(() => Rider, (rider) => rider.shipments)
-@JoinColumn({ name: 'rider_id' }) // This is important!
+@JoinColumn({ name: 'rider_id' }) 
 rider: Rider;
 
-@ManyToOne(() => Customer, (customer) => customer.shipment_request) 
+@ManyToOne(() => Customer, (customer) => customer.shipment) 
 @JoinColumn({ name: 'customer_id' }) customer: Customer;
 
+    @OneToMany(() => parcel_details, (parcel) => parcel.shipments, { cascade: true })
+  parcels: parcel_details[];
+
+// @OneToOne(() => CodPayment, (codPayment) => codPayment.shipment, { cascade: true })
+//   cod_payment: CodPayment;
+
+ 
+
+ 
 
 
-@OneToOne(() => CodPayment, (codPayment) => codPayment.shipment, { cascade: true })
-  cod_payment: CodPayment;
+ 
 
-@ManyToOne(() => shipment_request, (request) => request.shipment, { nullable: true })
-  @JoinColumn({ name: 'request_id' })
-  request: shipment_request;
-
-@ManyToOne(() => shipping_detail, (detail) => detail.shipments, { nullable: true })
-@JoinColumn({ name: 'shipping_id' })
-shippingDetail: shipping_detail;
-
-
-    @OneToMany(() => shipment_jobs, (job) => job.shipment)
-    shipmentJobs: shipment_jobs[];
-
-    
-  @OneToMany(() => earning, (earning) => earning.shipment)
-earnings: earning[];
-
+ 
 
 }

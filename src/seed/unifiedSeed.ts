@@ -275,10 +275,9 @@ async function unifiedSeed() {
       },
       {
         request_id: undefined,
-        customer: { id: savedCustomers[1].id } as DeepPartial<Customer>,
-        company: { company_id: savedCompanies[1].company_id } as DeepPartial<courier_company>,
+         company: { company_id: savedCompanies[1].company_id } as DeepPartial<courier_company>,
         pickup_location: '789 Oak St, Berlin',
-        dropoff_location: '101 Pine St, Berlin',
+        // dropoff_location: '101 Pine St, Berlin',
         parcel_type: 'large',
         package_size: 'large',
         weight: 20.0,
@@ -307,22 +306,17 @@ async function unifiedSeed() {
    const shipments: DeepPartial<Shipment>[] = [
   {
     tracking_number: 'SHIP001',
-    request: { request_id: savedRequests[0].request_id }, // relation instead of request_id
-    customer: { id: savedCustomers[0].id }, // relation instead of customer_id
+     customer: { id: savedCustomers[0].id }, // relation instead of customer_id
     pickup_time: new Date('2025-07-31T14:00:00'),
-    delivery_time: new Date('2025-07-31T16:00:00'),
- 
+  
     // cod_amount: 50.0,
     parcel_type: 'regular',
-    sender_name: 'Alice Johnson',
-    receiver_name: 'Bob Smith',
-    sender_phone: '1234567890',
-    receiver_phone: '9876543210',
-    payment_mode: 'standard',
-    delivered_on: new Date('2025-07-31T16:00:00'),
-    job_status: 'completed',
-    parcel_details: 'Small package, fragile',
-    createdBy: 'system',
+ 
+ 
+ 
+ 
+ 
+     createdBy: 'system',
     updatedBy: 'system',
     createdOn: new Date(),
     updatedOn: new Date(),
@@ -332,22 +326,13 @@ async function unifiedSeed() {
   },
   {
     tracking_number: 'SHIP002',
-    request: { request_id: savedRequests[1].request_id }, // relation instead of request_id
-    customer: { id: savedCustomers[1].id },
+     customer: { id: savedCustomers[1].id },
     pickup_time: new Date('2025-07-31T15:00:00'),
-    delivery_time: new Date('2025-07-31T17:00:00'),
-    // delivery_status: 'delivered',
+     // delivery_status: 'delivered',
     // cod_amount: 100.0,
     parcel_type: 'large',
-    sender_name: 'Bob Smith',
-    receiver_name: 'Alice Johnson',
-    sender_phone: '9876543210',
-    receiver_phone: '1234567890',
-    payment_mode: 'express',
-    delivered_on: new Date('2025-07-31T17:00:00'),
-    job_status: 'completed',
-    parcel_details: 'Large package, heavy',
-    createdBy: 'system',
+ 
+     createdBy: 'system',
     updatedBy: 'system',
     createdOn: new Date(),
     updatedOn: new Date(),
@@ -361,16 +346,14 @@ const savedShipments = await shipmentRepo.save(shipments);
 console.log('✅ Inserted Shipments:', savedShipments);
 
 // Update shipment_request with shipment reference
-savedRequests[0].shipment = savedShipments[0];
-savedRequests[1].shipment = savedShipments[1];
+ 
 await requestRepo.save(savedRequests);
 console.log('✅ Updated Shipment Requests with shipment:', savedRequests);
 
      console.log('✅ Inserted Shipments:', savedShipments);
 
     // Update shipment_request with shipment reference
-    savedRequests[0].shipment = savedShipments[0];
-    savedRequests[1].shipment = savedShipments[1];
+  
     await requestRepo.save(savedRequests);
     console.log('✅ Updated Shipment Requests with shipment:', savedRequests);
 

@@ -20,9 +20,7 @@ export class earning {
   @Column({ type: 'date' })
   date: Date;
 
-  @ManyToOne(() => Shipment, shipment => shipment.earnings)
-  @JoinColumn({ name: 'shipment_id' })
-  shipment: Shipment;
+ 
  
 
   @ManyToOne(()=> courier_company, company => company.earnings)

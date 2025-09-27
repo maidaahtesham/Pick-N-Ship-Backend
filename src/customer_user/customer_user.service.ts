@@ -1,5 +1,5 @@
 // src/customer-user/customer-user.service.ts
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { shipment_request } from '../Models/shipment_request.entity';
@@ -18,7 +18,10 @@ import * as bcrypt from 'bcryptjs';
 import { GetAllShipmentsCustomerDto } from 'src/ViewModel/get_all_shipment_customer_dto';
 import { CustomerAddresses } from 'src/Models/customer_addresses.entity';
 import { GetAddressesDto } from 'src/ViewModel/get-addresses.dto';
-
+ import { parcel_details } from 'src/Models/parcel_detail.entity';
+import { CreateFullShipmentDTO } from 'src/ViewModel/CreateShipmentRequestDto';
+import {  DataSource } from 'typeorm'; // For transaction
+import { Rating } from 'src/Models/ratings.entity';
 
 
 @Injectable()
@@ -36,11 +39,384 @@ export class CustomerUserService {
     private courierCompanyRepository: Repository<courier_company>,
     @InjectRepository(CustomerAddresses)
     private addressRepository: Repository<CustomerAddresses>,
+    @InjectRepository (parcel_details)
+    private parcelDetailsRepository: Repository<parcel_details>,
+
+       @InjectRepository (Rating)
+    private ratingRepository: Repository<Rating>,
+
+    private dataSource: DataSource,  
 
   ) {}
 
-     
+  //   async createShipmentRequest(customerId: number, data: { pickup_location: string; parcel_type: 'regular' | 'bulk'; request_date?: string; dropoff_locations?: string[]; tracking_number:string; }): Promise<Response> {
+  //   const resp = new Response();
+  //   try {
+  //     const customer = await this.customerRepository.findOne({ where: { id: customerId }, relations: ['company'] });
+  //     if (!customer) {
+  //       throw new BadRequestException('Customer not found');
+  //     }
 
+  //     const requestDate = data.request_date ? new Date(data.request_date) : new Date();
+  //     if (isNaN(requestDate.getTime())) {
+  //       throw new BadRequestException('Invalid request_date provided');
+  //     }
+
+  //     // Validate dropoff_locations for bulk
+  //     if (data.parcel_type === 'bulk' && (!data.dropoff_locations || data.dropoff_locations.length < 2)) {
+  //       throw new BadRequestException('Bulk shipment requires at least 2 dropoff locations');
+  //     }
+  //     if (data.parcel_type === 'regular' && data.dropoff_locations && data.dropoff_locations.length !== 1) {
+  //       throw new BadRequestException('Regular shipment requires exactly 1 dropoff location');
+  //     }
+
+  //     const shipment = this.shipmentRepository.create({
+  //       pickup_location: data.pickup_location,
+  //       parcel_type: data.parcel_type,
+  //       tracking_number:data.tracking_number,
+  //       shipment_status: 'pending',
+  //       payment_mode: 'prepaid',
+  //       shipment_created_on: new Date(),
+  //       pickup_time: requestDate,
+  //       customer: customer,
+  //       createdBy: 'system',
+  //       updatedBy: 'system',
+  //       status: true,
+  //     });
+
+  //     const savedShipment = await this.shipmentRepository.save(shipment);
+
+  //     resp.success = true;
+  //     resp.message = 'Shipment initialized successfully';
+  //     resp.result = {
+  //       shipment_id: savedShipment.id,
+  //       pickup_location: savedShipment.pickup_location,
+  //       parcel_type: savedShipment.parcel_type,
+  //       dropoff_locations: data.dropoff_locations || [],
+  //       request_date: requestDate,
+  //       createdOn: savedShipment.createdOn,
+  //       updatedOn: savedShipment.updatedOn,
+  //     };
+  //     resp.httpResponseCode = 200;
+  //     resp.customResponseCode = '200 OK';
+  //     return resp;
+  //   } catch (error) {
+  //     resp.success = false;
+  //     resp.message = 'Failed to initialize shipment: ' + error.message;
+  //     resp.httpResponseCode = 400;
+  //     resp.customResponseCode = '400 Bad Request';
+  //     return resp;
+  //   }
+  // }
+
+  // async AddParcelDetails(customerId: number, shipmentId: number, data: { parcels: Array<{
+  //   dropoff_location: string;
+  //   description?: string;
+  //   sender_name: string;
+  //   sender_phone: string;
+  //   receiver_name: string;
+  //   receiver_phone: string;
+  //   package_size: 'small' | 'medium' | 'large' | 'custom';
+  //   weight: number;
+  //   length: number;
+  //   height: number;
+  //   width?: number;
+  //   parcel_photos?: string[];
+  //   cod_amount?: number;
+  //   base_price?: number;
+  // }> }): Promise<Response> {
+  //   const resp = new Response();
+  //   try {
+  //     const shipment = await this.shipmentRepository.findOne({
+  //       where: { id: shipmentId },
+  //       relations: ['customer', 'courierCompany'],
+  //     });
+  //     if (!shipment) {
+  //       throw new BadRequestException('Shipment not found');
+  //     }
+  //     if (shipment.customer.id !== customerId) {
+  //       throw new BadRequestException('Unauthorized access to shipment');
+  //     }
+
+  //      const expectedCount = shipment.parcel_type === 'bulk' ? data.parcels.length >= 2 : data.parcels.length === 1;
+  //     if (!expectedCount) {
+  //       throw new BadRequestException(`Invalid number of parcels for ${shipment.parcel_type} type`);
+  //     }
+
+  //     let totalCodAmount = 0;
+  //     const parcelEntities: parcel_details[] = data.parcels.map((p) => {
+  //       const parcel = this.parcelDetailsRepository.create({
+  //         shipments: shipment,
+  //         dropoff_location: p.dropoff_location,
+  //         description: p.description || '',
+  //         sender_name: p.sender_name,
+  //         sender_phone: p.sender_phone,
+  //         receiver_name: p.receiver_name,
+  //         receiver_phone: p.receiver_phone,
+  //         package_size: p.package_size,
+  //         weight: p.weight,
+  //         length: p.length,
+  //         height: p.height,
+  //         width: p.width ,
+  //         parcel_photos: p.parcel_photos || [],
+  //          createdBy: 'system',
+  //         updatedBy: 'system',
+  //         status: true,
+  //       });
+  //       totalCodAmount += (p.cod_amount || 0);
+  //       return parcel;
+  //     });
+
+  //     const savedParcels = await this.parcelDetailsRepository.save(parcelEntities);
+
+  //     // Update shipment with tracking and other details
+  //     shipment.tracking_number = `SHIP-${shipmentId}-${Date.now()}`;
+  //     await this.shipmentRepository.save(shipment);
+
+  //     resp.success = true;
+  //     resp.message = 'Shipment details created successfully';
+  //     resp.result = {
+  //       shipment_id: shipment.id,
+  //       tracking_number: shipment.tracking_number,
+  //       parcels: savedParcels.map((parcel) => ({
+  //         parcel_id: parcel.parcel_id,
+  //         dropoff_location: parcel.dropoff_location,
+  //         package_size: parcel.package_size,
+  //         weight: parcel.weight,
+  //         // Include other fields as needed, exclude photos if sensitive
+  //       })),
+  //       total_cod_amount: totalCodAmount,
+  //     };
+  //     resp.httpResponseCode = 200;
+  //     resp.customResponseCode = '200 OK';
+  //     return resp;
+  //   } catch (error) {
+  //     resp.success = false;
+  //     resp.message = 'Failed to create shipment details: ' + error.message;
+  //     resp.httpResponseCode = 400;
+  //     resp.customResponseCode = '400 Bad Request';
+  //     return resp;
+  //   }
+  // }
+  
+async createFullShipment(data: CreateFullShipmentDTO): Promise<Response> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const customer = await queryRunner.manager.findOne(Customer, {
+        where: { id: data.customerId },
+        relations: ['company'],
+      });
+      if (!customer) {
+        throw new BadRequestException('Customer not found');
+      }
+
+      const requestDate = data.request_date ? new Date(data.request_date) : new Date();
+      if (isNaN(requestDate.getTime())) {
+        throw new BadRequestException('Invalid request_date provided');
+      }
+
+       if (data.parcel_type === 'bulk' && data.dropoff_locations.length < 2) {
+        throw new BadRequestException('Bulk shipment requires at least 2 dropoff locations');
+      }
+      if (data.parcel_type === 'regular' && data.dropoff_locations.length !== 1) {
+        throw new BadRequestException('Regular shipment requires exactly 1 dropoff location');
+      }
+      if (data.parcels.length !== data.dropoff_locations.length) {
+        throw new BadRequestException('Number of parcels must match number of dropoff locations');
+      }
+
+      // Create shipment
+      const shipment = queryRunner.manager.create(Shipment, {
+        pickup_location: data.pickup_location,
+        parcel_type: data.parcel_type,
+        shipment_status: 'pending',
+        payment_mode: 'prepaid',
+        shipment_created_on: new Date(),
+        pickup_time: requestDate,
+        customer: customer,
+        createdBy: 'system',
+        updatedBy: 'system',
+        status: true,
+      });
+
+      const savedShipment = await queryRunner.manager.save(shipment);
+
+      // Add parcels
+      let totalCodAmount = 0;
+      const parcelEntities: parcel_details[] = data.parcels.map((p, i) => {
+        const parcel = queryRunner.manager.create(parcel_details, {
+          shipments: { id: savedShipment.id }, // Use ID for relation
+          dropoff_location: data.dropoff_locations[i],
+          description: p.description || '',
+          sender_name: p.sender_name,
+          sender_phone: p.sender_phone,
+          receiver_name: p.receiver_name,
+          receiver_phone: p.receiver_phone,
+          package_size: p.package_size,
+          weight: p.weight,
+          length: p.length,
+          height: p.height,
+          width: p.width || undefined,  
+          parcel_photos: p.parcel_photos || [],
+          cod_amount: p.cod_amount || 0,
+          createdBy: 'system',
+          updatedBy: 'system',
+          status: true,
+        });
+        totalCodAmount += (p.cod_amount || 0);
+        return parcel;
+      });
+
+      const savedParcels = await queryRunner.manager.save(parcel_details, parcelEntities);
+
+      // Update shipment tracking
+      savedShipment.tracking_number = `SHIP-${savedShipment.id}-${Date.now()}`;
+      await queryRunner.manager.save(shipment);
+
+      await queryRunner.commitTransaction();
+
+      const resp = new Response();
+      resp.success = true;
+      resp.message = 'Full shipment created successfully';
+      resp.result = {
+        shipment_id: savedShipment.id,
+        tracking_number: savedShipment.tracking_number,
+        pickup_location: savedShipment.pickup_location,
+        parcel_type: savedShipment.parcel_type,
+        dropoff_locations: data.dropoff_locations,
+        parcels: savedParcels.map((parcel) => ({
+          parcel_id: parcel.parcel_id,
+          dropoff_location: parcel.dropoff_location,
+          size: parcel.package_size,
+          length:parcel.length,
+          width:parcel.width,
+          height:parcel.height,
+          weight: parcel.weight,
+          
+          
+
+        })),
+        total_cod_amount: totalCodAmount,
+        request_date: requestDate,
+        createdOn: savedShipment.createdOn,
+        updatedOn: savedShipment.updatedOn,
+      };
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      return resp;
+
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      const resp = new Response();
+      resp.success = false;
+      resp.message = 'Failed to create full shipment: ' + error.message;
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 Bad Request';
+      return resp;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+
+async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
+  const queryRunner = this.dataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    if (!data.parcels || data.parcels.length === 0) {
+      throw new BadRequestException('At least one parcel is required');
+    }
+
+    const parcel = data.parcels[0];  
+    const packageSize = parcel.package_size;
+    if (!['small', 'medium', 'large'].includes(packageSize)) {
+      throw new BadRequestException('Invalid package size');
+    }
+
+     const companies = await queryRunner.manager
+      .createQueryBuilder(courier_company, 'company')
+      .leftJoinAndSelect('company.company_conveyance_details', 'conveyance')
+      .leftJoinAndSelect('conveyance.pricing', 'pricing')
+      .where('conveyance.conveyance_types = :type', { type: 'bike' })
+      .andWhere('conveyance.is_active = :active', { active: true })
+      .andWhere('company.status = :status', { status: true })
+      .andWhere('pricing.is_active = :pricingActive', { pricingActive: true })
+      .getMany();
+
+    if (!companies.length) {
+      throw new BadRequestException('No courier companies with bike conveyance found');
+    }
+
+    const courierOptions = await Promise.all(companies.map(async (company) => {
+      const conveyance = company.company_conveyance_details.find(c => c.conveyance_types === 'bike');
+      if (!conveyance || !conveyance.pricing) return null;
+
+      // Match pricing by package_size (not dimensions for now)
+      const pricing = conveyance.pricing.find(p => p.size === packageSize && p.is_active === true);
+      if (!pricing) return null;
+
+      const baseFare = pricing.baseFare;
+      const platformFee = baseFare * 0.1; // 10% platform fee
+      const pnsCommission = baseFare * 0.05; // 5% PNS commission
+      const vat = (baseFare + platformFee + pnsCommission) * 0.05; // 5% VAT
+      const total = baseFare + platformFee + pnsCommission + vat;
+
+      // Get average rating
+      const ratings = await this.ratingRepository
+        .createQueryBuilder('rating')
+        .select('AVG(rating.stars)', 'avgRating')
+        .where('rating.company_id = :companyId', { companyId: company.company_id })
+        .getRawOne();
+      const avgRating = ratings.avgRating ? Number(ratings.avgRating).toFixed(1) : '0.0';
+
+      const estimatedDeliveryTime = '30 Mins';
+
+      return {
+        logo: company.logo || '',
+        name: company.company_name,
+        rating: Number(avgRating),
+        estimated_delivery_time: estimatedDeliveryTime,
+        price: `${total.toFixed(2)} AED`,
+        payment_details: {
+          standard_delivery_fees: `${baseFare.toFixed(2)} AED`,
+          subtotal: `${baseFare.toFixed(2)} AED`,
+          platform_fee: `${platformFee.toFixed(2)} AED`,
+          pns_commission_5: `${pnsCommission.toFixed(2)} AED`,
+          vat_5_percent: `${vat.toFixed(2)} AED`,
+          total: `${total.toFixed(2)} AED`,
+        },
+      };
+    }));
+
+    const validOptions = courierOptions.filter(option => option !== null);
+    if (!validOptions.length) {
+      throw new BadRequestException('No valid pricing options available for the selected package size');
+    }
+
+    const resp = new Response();
+    resp.success = true;
+    resp.message = 'Courier options retrieved successfully';
+    resp.result = { companies: validOptions };
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    return resp;
+
+  } catch (error) {
+    const resp = new Response();
+    resp.success = false;
+    resp.message = 'Failed to retrieve courier options: ' + error.message;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 Bad Request';
+    return resp;
+  } finally {
+    await queryRunner.release();
+  }
+}
 
 //   async createShipmentRequest(customerId: number, data: ShipmentRequestDTO): Promise<Response> {
 //     const resp= new Response();
@@ -142,166 +518,9 @@ export class CustomerUserService {
 //     }
 //   }
 
-  async createRegularBooking(customerId: number, data: RegularBookingDTO): Promise<Response> {
-    const resp= new Response();
+ 
 
-
-    try {
-      const shipmentRequest = await this.shipmentRequestRepository.findOne({ where: { request_id: data.request_id, customer: { id: customerId } } });
-      if (!shipmentRequest) {
-        throw new BadRequestException('Shipment request not found for the given customer');
-      }
-
-      shipmentRequest.parcel_type = 'regular';
-      shipmentRequest.package_size = data.package_size;
-      shipmentRequest.weight = data.weight;
-
-      if (data.length || data.width || data.height) {
-        shipmentRequest.length = data.length||0;
-        shipmentRequest.width = data.width || 0;
-        shipmentRequest.height = data.height||0;
-      }
-
-      shipmentRequest.parcel_photos = data.parcel_photos || null;
-      shipmentRequest.special_instruction = data.special_instruction || shipmentRequest.special_instruction;
-      shipmentRequest.updatedBy = 'system';
-      shipmentRequest.updatedOn = new Date();
-
-      const savedRequest: shipment_request = await this.shipmentRequestRepository.save(shipmentRequest);
-
-const shipment = await this.shipmentRepository.findOne({
-where: {
-  request: { request_id: data.request_id },
-},
-
-  relations: ['shipment_request'], // agar relation object bhi chahiye
-});
-      if (shipment) {
-        shipment.parcel_details = savedRequest.special_instruction || '';
-        await this.shipmentRepository.save(shipment);
-      }
-
-      resp.success = true;
-      resp.message = 'Regular booking created successfully';
-      resp.result = {
-        request_id: savedRequest.request_id,
-        pickup_location: savedRequest.pickup_location,
-        dropoff_location: savedRequest.dropoff_location,
-        parcel_type: savedRequest.parcel_type,
-        package_size: savedRequest.package_size,
-        weight: savedRequest.weight,
-        length: savedRequest.length,
-        height: savedRequest.height,
-        width: savedRequest.width,
-        base_price: savedRequest.base_price,
-        shipment_status: savedRequest.shipment_status,
-        request_date: savedRequest.request_date,
-        special_instruction: savedRequest.special_instruction,
-        parcel_photos: savedRequest.parcel_photos,
-        // courier_company_id: savedRequest.company?.company_id || null,
-        createdOn: savedRequest.createdOn,
-        updatedOn: savedRequest.updatedOn,
-        createdBy: savedRequest.createdBy,
-        updatedBy: savedRequest.updatedBy,
-      };
-      resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
-      return resp;
-    } catch (error) {
-      resp.success = false;
-      resp.message = 'Failed to create regular booking: ' + error.message;
-      resp.httpResponseCode = 400;
-      resp.customResponseCode = '400 Bad Request';
-      return resp;
-    }
-  }
-
-  async selectVehicle(customerId: number, data: SelectVehicleDTO): Promise<Response> {
-    const resp= new Response();
-
-
-    try {
-      const shipmentRequest = await this.shipmentRequestRepository.findOne({
-        where: { request_id: data.request_id, customer: { id: customerId } },
-        relations: ['company'], // Load the company relation
-      });
-      if (!shipmentRequest) {
-        throw new BadRequestException('Shipment request not found for the given customer');
-      }
-
-      // Fetch or create shipping_detail with proper company relationship
-      let shippingDetail = await this.shippingDetailRepository.findOne({
-        where: {
-          conveyance_types: data.vehicle_type,
-          company: { company_id: shipmentRequest.company?.company_id || 1 }, // Use company_id as the foreign key
-        },
-      });
-      if (!shippingDetail) {
-        const company = await this.courierCompanyRepository.findOne({ where: { company_id: shipmentRequest.company?.company_id || 1 } });
-        if (!company) {
-          throw new BadRequestException('Courier company not found');
-        }
-        shippingDetail = this.shippingDetailRepository.create({
-          conveyance_types: data.vehicle_type,
-          conveyance_details: `Details for ${data.vehicle_type}`,
-          commission_rate: 'standard',
-          company: company, // Use the full entity
-        });
-        shippingDetail = await this.shippingDetailRepository.save(shippingDetail);
-      }
-
-      // Update associated Shipment with shipping_detail
-const shipment = await this.shipmentRepository.findOne({
-  where: {
-    request: { request_id: data.request_id },
-  },
-  relations: ['shipment_request'], // agar relation object bhi chahiye
-});
-      if (!shipment) {
-        throw new BadRequestException('Shipment not found for the given request');
-      }
-
-      shipment.shippingDetail = shippingDetail;
-      shipment.updatedBy = 'system';
-      shipment.updatedOn = new Date();
-      await this.shipmentRepository.save(shipment);
-
-      resp.success = true;
-      resp.message = 'Vehicle selected successfully';
-      resp.result = {
-        request_id: shipmentRequest.request_id,
-        pickup_location: shipmentRequest.pickup_location,
-        dropoff_location: shipmentRequest.dropoff_location,
-        parcel_type: shipmentRequest.parcel_type,
-        package_size: shipmentRequest.package_size,
-        weight: shipmentRequest.weight,
-        length: shipmentRequest.length,
-        height: shipmentRequest.height,
-        width: shipmentRequest.width,
-        base_price: shipmentRequest.base_price,
-        shipment_status: shipmentRequest.shipment_status,
-        request_date: shipmentRequest.request_date,
-        special_instruction: shipmentRequest.special_instruction,
-        parcel_photos: shipmentRequest.parcel_photos,
-        vehicle_type: shippingDetail.conveyance_types,
-        conveyance_details: shippingDetail.conveyance_details,
-        commission_rate: shippingDetail.commission_rate,
-        createdOn: shipmentRequest.createdOn,
-        updatedOn: shipmentRequest.updatedOn,
-        createdBy: shipmentRequest.createdBy,
-        updatedBy: shipmentRequest.updatedBy,
-      };
-      resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
-      return resp;
-    } catch (error) {
-      resp.success = false;
-      resp.message = 'Failed to select vehicle: ' + error.message;
-      resp.httpResponseCode = 400;
-      resp.customResponseCode = '400 Bad Request';
-      return resp;
-    }
-  }
+ 
 
   async hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10); // Generate salt with 10 rounds
@@ -501,6 +720,32 @@ async getAddresses({ customer_id, page = 1, limit = 10 }: GetAddressesDto) {
       };
     }
   }
+async addAddress(data: any): Promise<CustomerAddresses> {
+    // Use customerRepository to fetch the customer
+    const customer = await this.customerRepository.findOne({
+        where: { id: data.customer_id },
+    });
 
+    if (!customer) throw new Error('Customer not found');
+
+    // Create the address
+    const address = this.addressRepository.create({
+        customer: customer,
+        street: data.street,
+        city: data.city,
+        country: data.country,
+        building_name: data.building_name,
+        apartment: data.apartment,
+        makani_number: data.makani_number,
+        nearest_landmark: data.nearest_landmark,
+        address_type: data.address_type,
+        is_default: data.is_default || false,
+        createdBy: data.createdBy,
+        updatedBy: data.updatedBy,
+        status: true,
+    });
+
+    return this.addressRepository.save(address);
+}
 
 }

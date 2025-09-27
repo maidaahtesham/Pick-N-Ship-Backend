@@ -1084,16 +1084,16 @@ async getShipmentOverview(@Body('id') id: number): Promise<Response> {
         parcel_type: true,
         payment_mode: true,
         pickup_time: true,
-        delivery_time: true,
-        receiver_name: true,
-        sender_name: true,
+        // delivery_time: true, //is shifted to parcel_detail tabel 
+        // receiver_name: true,
+        // sender_name: true,
         tracking_number: true,
         createdOn: true,
-        sender_phone: true,
-        receiver_phone: true,
+        // sender_phone: true,
+        // receiver_phone: true,
         courierCompany: { company_name: true },
         rider: { rider_name: true, vehicle_type: true },
-  cod_payment: { id: true, cod_amount: true, payment_status: true, is_paid_to_company: true, is_remitted_to_pns: true }
+  // cod_payment: { id: true, cod_amount: true, payment_status: true, is_paid_to_company: true, is_remitted_to_pns: true }
       },
     });
 
@@ -1135,8 +1135,7 @@ async getCodShipments(page: number, limit: number, courier_company?: string, sta
     query.andWhere('courierCompany.company_name = :courier_company', { courier_company });
   }
 
-  // Status filter (optional) → agar body me bheja ho
-  if (status) {
+   if (status) {
     query.andWhere('cod_payment.payment_status = :status', { status });
   }
 

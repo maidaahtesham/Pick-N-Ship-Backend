@@ -652,17 +652,17 @@ async markShipmentAsReceived(shipmentId: number): Promise<Response> {
       .where('shipment.id = :shipmentId', { shipmentId })
       .getOne();
 
-    if (!shipment || !shipment.cod_payment) {
-      throw new NotFoundException(`Shipment with id ${shipmentId} or its COD payment not found`);
-    }
+    // if (!shipment || !shipment.cod_payment) {
+    //   throw new NotFoundException(`Shipment with id ${shipmentId} or its COD payment not found`);
+    // }
 
-    const codPayment = shipment.cod_payment;
+    // // const codPayment = shipment.cod_payment;
 
-    // Update status to "received"
-    codPayment.is_paid_to_company = true;
-    codPayment.updatedOn = new Date();
+    // // Update status to "received"
+    // codPayment.is_paid_to_company = true;
+    // codPayment.updatedOn = new Date();
 
-    await this.codPaymentRepository.save(codPayment);
+    // await this.codPaymentRepository.save(codPayment);
 
     resp.success = true;
     resp.httpResponseCode = 200;
@@ -838,262 +838,258 @@ async addVendorCompleteDetails(data: VendorOperationDTO): Promise<Response> {
 
 
 
-async getDashboardStats(companyId: number) {
-  const [active, pending, delayed, delivered, earning, overallRatingRaw] = await Promise.all([
-    this.shipmentRepository.count({
-      where: [
-        { courierCompany: { company_id: companyId }, job_status: 'Active' },
-        { courierCompany: { company_id: companyId }, job_status: 'In Progress' },
-      ],
-    }),
-    this.shipmentRepository.count({
-      where: [
-        { courierCompany: { company_id: companyId }, job_status: 'Pending' },
-        { courierCompany: { company_id: companyId }, job_status: 'pending' },
-      ],
-    }),
-    this.shipmentRepository.count({
-      where: [
-        { courierCompany: { company_id: companyId }, job_status: 'Delayed' },
-        { courierCompany: { company_id: companyId }, job_status: 'Cancelled' },
-      ],
-    }),
-    this.shipmentRepository.count({
-      where: [
-        { courierCompany: { company_id: companyId }, job_status: 'Delivered' },
-        { courierCompany: { company_id: companyId }, job_status: 'Completed' },
-      ],
-    }),
+// async getDashboardStats(companyId: number) {
+//   const [active, pending, delayed, delivered, earning, overallRatingRaw] = await Promise.all([
+//     this.shipmentRepository.count({
+//       where: [
+//         { courierCompany: { company_id: companyId }, job_status: 'Active' },
+//         { courierCompany: { company_id: companyId }, job_status: 'In Progress' },
+//       ],
+//     }),
+//     this.shipmentRepository.count({
+//       where: [
+//         { courierCompany: { company_id: companyId }, job_status: 'Pending' },
+//         { courierCompany: { company_id: companyId }, job_status: 'pending' },
+//       ],
+//     }),
+//     this.shipmentRepository.count({
+//       where: [
+//         { courierCompany: { company_id: companyId }, job_status: 'Delayed' },
+//         { courierCompany: { company_id: companyId }, job_status: 'Cancelled' },
+//       ],
+//     }),
+//     this.shipmentRepository.count({
+//       where: [
+//         { courierCompany: { company_id: companyId }, job_status: 'Delivered' },
+//         { courierCompany: { company_id: companyId }, job_status: 'Completed' },
+//       ],
+//     }),
 
-    // ✅ Earning
-    this.shipmentRepository
-      .createQueryBuilder('s')
-      .leftJoin('s.cod_payment', 'cp')
-      .select('COALESCE(SUM(cp.cod_amount), 0)', 'total')
-      .where('s.company_id = :companyId', { companyId })
-      .andWhere('s.job_status IN (:...jobStatuses)', { jobStatuses: ['Delivered', 'Completed'] })
-      .andWhere('cp.payment_status = :status', { status: 'paid' })
-      .getRawOne<{ total: string }>(),
+//     // ✅ Earning
+//     this.shipmentRepository
+//       .createQueryBuilder('s')
+//       .leftJoin('s.cod_payment', 'cp')
+//       .select('COALESCE(SUM(cp.cod_amount), 0)', 'total')
+//       .where('s.company_id = :companyId', { companyId })
+//       .andWhere('s.job_status IN (:...jobStatuses)', { jobStatuses: ['Delivered', 'Completed'] })
+//       .andWhere('cp.payment_status = :status', { status: 'paid' })
+//       .getRawOne<{ total: string }>(),
 
-    // ✅ Overall Rating
-    this.ratingRepository
-      .createQueryBuilder('rating')
-      .select('AVG(rating.stars)', 'avg_stars')
-      .addSelect('AVG(rating.rider_behavior_score)', 'avg_rider_behavior')
-      .addSelect('AVG(rating.on_time_delivery_score)', 'avg_on_time_delivery')
-      .addSelect('AVG(rating.affordability_score)', 'avg_affordability')
-      .addSelect('COUNT(rating.id)', 'total_reviews')
-      .where('rating.company_id = :companyId', { companyId })
-      .andWhere('rating.status = :status', { status: true })
-      .getRawOne<{
-        avg_stars: string | null;
-        avg_rider_behavior: string | null;
-        avg_on_time_delivery: string | null;
-        avg_affordability: string | null;
-        total_reviews: string | null;
-      }>(),
-  ]);
+//     // ✅ Overall Rating
+//     this.ratingRepository
+//       .createQueryBuilder('rating')
+//       .select('AVG(rating.stars)', 'avg_stars')
+//       .addSelect('AVG(rating.rider_behavior_score)', 'avg_rider_behavior')
+//       .addSelect('AVG(rating.on_time_delivery_score)', 'avg_on_time_delivery')
+//       .addSelect('AVG(rating.affordability_score)', 'avg_affordability')
+//       .addSelect('COUNT(rating.id)', 'total_reviews')
+//       .where('rating.company_id = :companyId', { companyId })
+//       .andWhere('rating.status = :status', { status: true })
+//       .getRawOne<{
+//         avg_stars: string | null;
+//         avg_rider_behavior: string | null;
+//         avg_on_time_delivery: string | null;
+//         avg_affordability: string | null;
+//         total_reviews: string | null;
+//       }>(),
+//   ]);
 
-  // ✅ Ensure safe object
-  const overallRating = overallRatingRaw || {
-    avg_stars: '0',
-    avg_rider_behavior: '0',
-    avg_on_time_delivery: '0',
-    avg_affordability: '0',
-    total_reviews: '0',
-  };
+//   // ✅ Ensure safe object
+//   const overallRating = overallRatingRaw || {
+//     avg_stars: '0',
+//     avg_rider_behavior: '0',
+//     avg_on_time_delivery: '0',
+//     avg_affordability: '0',
+//     total_reviews: '0',
+//   };
 
-  const getRatingLabel = (score: number): string => {
-    if (score >= 80) return 'Great';
-    if (score >= 50) return 'Good';
-    return 'Poor';
-  };
+//   const getRatingLabel = (score: number): string => {
+//     if (score >= 80) return 'Great';
+//     if (score >= 50) return 'Good';
+//     return 'Poor';
+//   };
 
-  return {
-    active,
-    pending,
-    delayed,
-    delivered,
-    earning: earning?.total ? parseFloat(earning.total) : 0,
-    rating: overallRating.avg_stars ? parseFloat(overallRating.avg_stars).toFixed(1) : '0.0',
-    overallRating: {
-      avgStars: parseFloat(overallRating.avg_stars || '0').toFixed(1),
-      avgRiderBehaviorScore: parseFloat(overallRating.avg_rider_behavior || '0').toFixed(0),
-      avgOnTimeDeliveryScore: parseFloat(overallRating.avg_on_time_delivery || '0').toFixed(0),
-      avgAffordabilityScore: parseFloat(overallRating.avg_affordability || '0').toFixed(0),
-      avgRiderBehaviorLabel: getRatingLabel(parseFloat(overallRating.avg_rider_behavior || '0')),
-      avgOnTimeDeliveryLabel: getRatingLabel(parseFloat(overallRating.avg_on_time_delivery || '0')),
-      avgAffordabilityLabel: getRatingLabel(parseFloat(overallRating.avg_affordability || '0')),
-      totalReviews: parseInt(overallRating.total_reviews || '0', 10),
-    },
-  };
-}
+//   return {
+//     active,
+//     pending,
+//     delayed,
+//     delivered,
+//     earning: earning?.total ? parseFloat(earning.total) : 0,
+//     rating: overallRating.avg_stars ? parseFloat(overallRating.avg_stars).toFixed(1) : '0.0',
+//     overallRating: {
+//       avgStars: parseFloat(overallRating.avg_stars || '0').toFixed(1),
+//       avgRiderBehaviorScore: parseFloat(overallRating.avg_rider_behavior || '0').toFixed(0),
+//       avgOnTimeDeliveryScore: parseFloat(overallRating.avg_on_time_delivery || '0').toFixed(0),
+//       avgAffordabilityScore: parseFloat(overallRating.avg_affordability || '0').toFixed(0),
+//       avgRiderBehaviorLabel: getRatingLabel(parseFloat(overallRating.avg_rider_behavior || '0')),
+//       avgOnTimeDeliveryLabel: getRatingLabel(parseFloat(overallRating.avg_on_time_delivery || '0')),
+//       avgAffordabilityLabel: getRatingLabel(parseFloat(overallRating.avg_affordability || '0')),
+//       totalReviews: parseInt(overallRating.total_reviews || '0', 10),
+//     },
+//   };
+// }
 
 
 
-async getShipmentDetailsById(shipmentId: number) {
-  try {
-    // Fetch shipment with all relevant relations
-    const shipment = await this.shipmentRepository.findOne({
-      where: { id: shipmentId },
-      relations: [
-        'rider',
-        'customer',
-        'cod_payment',
-        'courierCompany',
-        // 'courierCompany.shippingDetails',
-        'courierCompany.commissionRates',
-      ],
-    });
+// async getShipmentDetailsById(shipmentId: number) {
+//   try {
+//     // Fetch shipment with all relevant relations
+//     const shipment = await this.shipmentRepository.findOne({
+//       where: { id: shipmentId },
+//       relations: [
+//         'rider',
+//         'customer',
+//         'cod_payment',
+//         'courierCompany',
+//         // 'courierCompany.shippingDetails',
+//         'courierCompany.commissionRates',
+//       ],
+//     });
 
-    if (!shipment) throw new Error('Shipment not found');
+//     if (!shipment) throw new Error('Shipment not found');
 
-    const rider = shipment.rider || null;
-    const customer = shipment.customer || null;
-    const codPayment = shipment.cod_payment || null;
-    const company = shipment.courierCompany || null;
+//     const rider = shipment.rider || null;
+//     const customer = shipment.customer || null;
+//     const codPayment = shipment.cod_payment || null;
+//     const company = shipment.courierCompany || null;
 
-    // ---------------------------
-    // Dynamic Delivery Fees Logic
-    // ---------------------------
- // Dynamic Delivery Fees Logic
-let paymentDetails = {
-  standardDeliveryFees: 0,
-  subtotal: 0,
-  platformFees: 0,
-  vat: 0,
-  pnsCommission: 0,
-  total: 0,
-};
+//     // ---------------------------
+//     // Dynamic Delivery Fees Logic
+//     // ---------------------------
+//  // Dynamic Delivery Fees Logic
+// let paymentDetails = {
+//   standardDeliveryFees: 0,
+//   subtotal: 0,
+//   platformFees: 0,
+//   vat: 0,
+//   pnsCommission: 0,
+//   total: 0,
+// };
 
-if (company && rider) {
-  const vehicleType = rider.vehicle_type.toLowerCase();
+// if (company && rider) {
+//   const vehicleType = rider.vehicle_type.toLowerCase();
 
-  const conveyanceDetail = await this.companyConveyanceDetailsRepository
-    .createQueryBuilder('conveyance')
-    .leftJoinAndSelect('conveyance.pricing', 'pricing')
-    .where('conveyance.company_id = :companyId', { companyId: company.company_id })
-    .andWhere('conveyance.conveyance_types = :vehicleType', { vehicleType })
-    .getOne();
+//   const conveyanceDetail = await this.companyConveyanceDetailsRepository
+//     .createQueryBuilder('conveyance')
+//     .leftJoinAndSelect('conveyance.pricing', 'pricing')
+//     .where('conveyance.company_id = :companyId', { companyId: company.company_id })
+//     .andWhere('conveyance.conveyance_types = :vehicleType', { vehicleType })
+//     .getOne();
 
-  if (conveyanceDetail) {
-    const pricing = conveyanceDetail.pricing.find(p => p.size === shipment.parcel_size);
+//   if (conveyanceDetail) {
+//     const pricing = conveyanceDetail.pricing.find(p => p.size === shipment.package_size);
 
-    if (pricing) {
-      const baseFare = pricing.baseFare || 0;
-      const distanceFare = (rider.distance || 0) * (pricing.pricePerKm || 0);
+//     if (pricing) {
+//       const baseFare = pricing.baseFare || 0;
+//       const distanceFare = (rider.distance || 0) * (pricing.pricePerKm || 0);
 
-      const standardDeliveryFees = baseFare + distanceFare;
+//       const standardDeliveryFees = baseFare + distanceFare;
 
-      // Commission calculation as percentage (for PNS info only)
-      const commissionRate = parseFloat(company.commissionRates?.[0]?.commission_rate || '0'); // e.g., 10
-      const pnsCommission = standardDeliveryFees * (commissionRate / 100);
+//       // Commission calculation as percentage (for PNS info only)
+//       const commissionRate = parseFloat(company.commissionRates?.[0]?.commission_rate || '0'); // e.g., 10
+//       const pnsCommission = standardDeliveryFees * (commissionRate / 100);
 
-      const subtotal = standardDeliveryFees;
-      const platformFees = 1; // example platform fee
-      const vat = Math.ceil(subtotal * 0.06); // 6% VAT
-      const total = subtotal + platformFees + vat; // **exclude commission**
+//       const subtotal = standardDeliveryFees;
+//       const platformFees = 1; // example platform fee
+//       const vat = Math.ceil(subtotal * 0.06); // 6% VAT
+//       const total = subtotal + platformFees + vat; // **exclude commission**
 
-      paymentDetails = {
-        standardDeliveryFees,
-        subtotal,
-        platformFees,
-        vat,
-        pnsCommission,
-        total,
-      };
-    }
-  }
-}
+//       paymentDetails = {
+//         standardDeliveryFees,
+//         subtotal,
+//         platformFees,
+//         vat,
+//         pnsCommission,
+//         total,
+//       };
+//     }
+//   }
+// }
 
-  const companyDocuments = await this.companyDocumentRepository.find({
-      where: { company_id: company?.company_id },
-    });
+//   const companyDocuments = await this.companyDocumentRepository.find({
+//       where: { company_id: company?.company_id },
+//     });
   
-    const shipmentDetails: GetShipmentDetailsByIdDto = {
-      shipmentId: shipment.tracking_number || '',
-      date: shipment.createdOn?.toISOString().split('T')[0] || '',
-      parcelType: shipment.parcel_type || '',
-      parcelSize: shipment.parcel_size || '',
-      parcelWeight: '', // compute if needed
-      parameters: shipment.parcel_parameters || '',
-      amount: codPayment?.cod_amount?.toString() || '',
-      shipmentStatus: shipment.job_status || '',
-      shipmentType: shipment.payment_mode || '',
-      customerName: customer ? `${customer.firstname} ${customer.lastname}` : '',
-      customerNumber: customer?.phone_number || '',
-      senderName: shipment.sender_name || '',
-      senderNumber: shipment.sender_phone || '',
-      receiverName: shipment.receiver_name || '',
-      receiverPhoneNumber: shipment.receiver_phone || '',
-      assignedRider: rider?.rider_name || '',
-      pickUpTime: shipment.pickup_time?.toLocaleTimeString() || '',
-      deliveredTime: shipment.delivery_time?.toLocaleTimeString() || '',
-      isCodReceived: codPayment?.payment_status === 'paid',
-      pickupLocation: shipment.pickup_address || '',
-      dropOffLocation: shipment.delivery_address || '',
-      parcelDetailDescription: shipment.parcel_details || '',
-      parcelPhotos: [], // Fetch if available
-      companyDetails: { company_name: company?.company_name || '' ,
-      documents: companyDocuments.map(doc=>({
-       establishment_card_document: [
-            { side_front: 'front', file_front: doc.establishment_card_front,
-              side_back:'back', file_back:doc.establishment_card_back
-            },  
-          ],
-          establishment_card_expiry_date: doc.trade_license_expiry_date,
-        })),
-      },
-      orderTracking: {
-        awaiting: { status: 'Completed', time: shipment.createdOn?.toLocaleString() || '' },
-        pickup: { status: 'Completed', time: shipment.pickup_time?.toLocaleString() || '' },
-        inTransit: { status: 'Completed', time: shipment.updatedOn?.toLocaleString() || '' },
-        outForDelivery: { status: 'Pending', time: '' },
-        delivered: { status: shipment.job_status === 'Completed' ? 'Completed' : 'Pending', time: shipment.delivered_on?.toLocaleString() || '' },
-        codCollected: { status: codPayment?.payment_status || 'Pending', time: codPayment?.collectedOn?.toLocaleString() || '' },
-      },
-      vehicleType: rider?.vehicle_type || '',
-      paymentDetails,
-      codMarkedAsReceivedByAdmin: { status: 'Pending', time: '' }, // handle admin logic if needed
-    };
+    // const shipmentDetails: GetShipmentDetailsByIdDto = {
+    //   shipmentId: shipment.tracking_number || '',
+    //   date: shipment.createdOn?.toISOString().split('T')[0] || '',
+    //   parcelType: shipment.parcel_type || '',
+ 
+    //   parcelWeight: '', // compute if needed
+    //    amount: codPayment?.cod_amount?.toString() || '',
+    //    shipmentType: shipment.payment_mode || '',
+    //   customerName: customer ? `${customer.firstname} ${customer.lastname}` : '',
+    //   customerNumber: customer?.phone_number || '',
+    //   senderName: shipment.sender_name || '',
+    //   senderNumber: shipment.sender_phone || '',
+    //   receiverName: shipment.receiver_name || '',
+    //   receiverPhoneNumber: shipment.receiver_phone || '',
+    //   assignedRider: rider?.rider_name || '',
+    //   pickUpTime: shipment.pickup_time?.toLocaleTimeString() || '',
+    //    isCodReceived: codPayment?.payment_status === 'paid',
+  
+    //   parcelPhotos: [], // Fetch if available
+    //   companyDetails: { company_name: company?.company_name || '' ,
+    //   documents: companyDocuments.map(doc=>({
+    //    establishment_card_document: [
+    //         { side_front: 'front', file_front: doc.establishment_card_front,
+    //           side_back:'back', file_back:doc.establishment_card_back
+    //         },  
+    //       ],
+    //       establishment_card_expiry_date: doc.trade_license_expiry_date,
+    //     })),
+    //   },
+      // orderTracking: {
+      //   awaiting: { status: 'Completed', time: shipment.createdOn?.toLocaleString() || '' },
+      //   pickup: { status: 'Completed', time: shipment.pickup_time?.toLocaleString() || '' },
+      //   inTransit: { status: 'Completed', time: shipment.updatedOn?.toLocaleString() || '' },
+      //   outForDelivery: { status: 'Pending', time: '' },
+      //    codCollected: { status: codPayment?.payment_status || 'Pending', time: codPayment?.collectedOn?.toLocaleString() || '' },
+      // },
+      // vehicleType: rider?.vehicle_type || '',
+    //   paymentDetails,
+    //   codMarkedAsReceivedByAdmin: { status: 'Pending', time: '' }, // handle admin logic if needed
+    // };
 
 
-      return shipmentDetails;
-    } catch (error) {
-      throw new Error(`Error fetching shipment details: ${error.message}`);
-    }
+    //   return shipmentDetails;
+    // } catch (error) {
+    //   throw new Error(`Error fetching shipment details: ${error.message}`);
+    // }
+// }  
+// async updateProfileStatus(data:profile_status_update_dto): Promise<Response> {
+//   const resp = new Response();
+//   try {
+//     const company = await this.courierCompanyRepository.findOne({
+//       where: { company_id: data.company_id },
+//     });
+
+//     if (!company) {
+//       throw new Error('Company not found');
+//     }
+
+//     company.is_profile_complete = data.isProfileComplete;
+//     company.updatedOn = new Date();
+//     company.updatedBy = data.updated_by; 
+
+//     await this.courierCompanyRepository.save(company);
+
+//     resp.success = true;
+//     resp.message = `Profile status updated successfully to ${data}`;
+//     resp.result = { company_id: data.company_id, is_profile_complete: data.isProfileComplete};
+//     resp.httpResponseCode = 200;
+//     resp.customResponseCode = '200 OK';
+//     return resp;
+//   } catch (error) {
+//     resp.success = false;
+//     resp.message = 'Failed to update profile status: ' + error.message;
+//     resp.httpResponseCode = 400;
+//     resp.customResponseCode = '400 Bad Request';
+//     return resp;
+//   }
+// }
+
+
+// } 
   }
-async updateProfileStatus(data:profile_status_update_dto): Promise<Response> {
-  const resp = new Response();
-  try {
-    const company = await this.courierCompanyRepository.findOne({
-      where: { company_id: data.company_id },
-    });
-
-    if (!company) {
-      throw new Error('Company not found');
-    }
-
-    company.is_profile_complete = data.isProfileComplete;
-    company.updatedOn = new Date();
-    company.updatedBy = data.updated_by; 
-
-    await this.courierCompanyRepository.save(company);
-
-    resp.success = true;
-    resp.message = `Profile status updated successfully to ${data}`;
-    resp.result = { company_id: data.company_id, is_profile_complete: data.isProfileComplete};
-    resp.httpResponseCode = 200;
-    resp.customResponseCode = '200 OK';
-    return resp;
-  } catch (error) {
-    resp.success = false;
-    resp.message = 'Failed to update profile status: ' + error.message;
-    resp.httpResponseCode = 400;
-    resp.customResponseCode = '400 Bad Request';
-    return resp;
-  }
-}
-
-
-}
+ 

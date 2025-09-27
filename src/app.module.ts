@@ -31,6 +31,7 @@ import { company_commission_rate } from './Models/company_commission_rate.entity
 import { earning } from './Models/earnings.entity';
 import { shipment_jobs } from './Models/shipment_jobs.entity';
 import { CustomerAddresses } from './Models/customer_addresses.entity';
+import { parcel_details } from './Models/parcel_detail.entity';
    @Module({
   imports: [
     // Load environment variables globally
@@ -87,7 +88,8 @@ import { CustomerAddresses } from './Models/customer_addresses.entity';
         company_commission_rate,
         shipment_jobs,
         earning,
-       CustomerAddresses
+       CustomerAddresses,
+       parcel_details
         
       ],
       // migrations: ['dist/migrations/*.ts'],

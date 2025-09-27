@@ -40,10 +40,7 @@ updatedOn: Date;
   status: boolean;
 
  
-  @ManyToOne(() => Shipment, shipment => shipment.shipmentJobs)
-  @JoinColumn({ name: 'shipment_id' })
-  shipment: Shipment;
-  
+ 
    
   @ManyToOne(() => Rider, rider => rider.shipmentJobs)
   @JoinColumn({ name: 'rider_id' })

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Inject, Post, UseGuards,Request } from '@nestjs/common';
+import { Body, Controller, HttpCode, Inject, Post, UseGuards,Request, Req, ValidationPipe, Param, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 import { CustomerUserService } from './customer_user.service';
 import { customer_signup_dto } from '../ViewModel/customer_signup_dto';
@@ -8,7 +8,8 @@ import { ShipmentRequestDTO } from '../ViewModel/shipmentRequestDTO';
 import { RegularBookingDTO } from '../ViewModel/RegularBookingDTO';
 import { GetAllShipmentsCustomerDto } from 'src/ViewModel/get_all_shipment_customer_dto';
 import { GetAddressesDto } from 'src/ViewModel/get-addresses.dto';
-
+import { CreateFullShipmentDTO } from 'src/ViewModel/CreateShipmentRequestDto';
+ 
 // @UseGuards(JwtAuthGuard)
 
 @Controller('api/customer-user')
@@ -20,20 +21,48 @@ constructor(private readonly customerUserService: CustomerUserService) {}
         
  
  
-// @Post('shipment-request')
+// @Post('create-shipment-request')
 //   @HttpCode(200)
-//   async createShipmentRequest(@Request() req, @Body() body: ShipmentRequestDTO): Promise<Response> {
-//     const customerId = req.user.sub; // Assuming JWT payload includes sub as customerId
-//     return this.customerUserService.createShipmentRequest(customerId, body);
+//   async step1(@Body(ValidationPipe) body: CreateShipmentRequestDto): Promise<Response> {
+//     return this.customerUserService.createShipmentRequest(body.customerId, body);
+//   }
+
+//   @Post('add-parcel-detail/:shipmentId')
+//   @HttpCode(200)
+//   async step2(@Body(ValidationPipe) body: CompleteShipmentDTO, @Param('shipmentId') shipmentId: string): Promise<Response> {
+//     const id = parseInt(shipmentId, 10);
+//     if (isNaN(id)) {
+//       throw new BadRequestException('Invalid shipmentId');
+//     }
+//     return this.customerUserService.AddParcelDetails(body.customerId, id, body);
 //   }
 
 
-@Post('create-regular-booking')
-@HttpCode(200)
-async createRegularBooking(@Request() req, @Body() body: RegularBookingDTO): Promise<Response> {
-  const customerId = req.user.sub;
-  return this.customerUserService.createRegularBooking(customerId, body);
-}
+ @Post('create-full-shipment')
+  @HttpCode(200)
+  async createFullShipment(@Body(ValidationPipe) body: CreateFullShipmentDTO): Promise<Response> {
+    return this.customerUserService.createFullShipment(body);
+  }
+
+
+@Post('get-courier-options')
+  @HttpCode(200)
+  async getCourierOptions(@Body(ValidationPipe) body: CreateFullShipmentDTO): Promise<Response> {
+    try {
+      return await this.customerUserService.getCourierOptions(body);
+    } catch (error) {
+      throw new BadRequestException(`Failed to retrieve courier options: ${error.message}`);
+    }
+  }
+
+
+  
+//   @Post('create-shipment-request')
+//    @UseGuards(JwtAuthGuard)
+//  async createShipmentRequest(@Body() createShipmentRequestDto: CreateShipmentRequestDto ) {
+//    const { customerId } = createShipmentRequestDto;
+//     return this.customerUserService.createShipmentRequest(createShipmentRequestDto, customerId);
+//   }
 
 
 @Post('create-customer-user')
@@ -47,6 +76,12 @@ async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
   @Post('get-all-shipments')
   async getAllShipments(@Body() getAllShipmentsDto: GetAllShipmentsCustomerDto) {
     return this.customerUserService.getAllShipments(getAllShipmentsDto);
+  }
+
+
+    @Post('add-address')
+  async addAddress(@Body() body: any) {
+    return this.customerUserService.addAddress(body);
   }
 @UseGuards(JwtAuthGuard)
   @Post('get-addresses')

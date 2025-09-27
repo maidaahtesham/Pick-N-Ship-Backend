@@ -8,9 +8,11 @@ import { Shipment } from '../Models/shipment.entity';
 import { courier_company } from '../Models/courier_company.entity';
 import { shipping_detail } from '../Models/shipping_detail.entity';
 import { CustomerAddresses } from 'src/Models/customer_addresses.entity';
+import { parcel_details } from 'src/Models/parcel_detail.entity';
+import { Rating } from 'src/Models/ratings.entity';
  
 @Module({
-            imports: [TypeOrmModule.forFeature([Customer,shipment_request,Shipment,courier_company,shipping_detail, CustomerAddresses])],
+            imports: [TypeOrmModule.forFeature([Rating,Customer,shipment_request,Shipment,courier_company,shipping_detail, CustomerAddresses,parcel_details])],
 
   controllers: [CustomerUserController],
   providers: [CustomerUserService],

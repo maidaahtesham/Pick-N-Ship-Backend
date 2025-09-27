@@ -3,6 +3,7 @@ import { Rating } from "./ratings.entity";
 import { shipment_request } from "./shipment_request.entity";
 import { courier_company } from "./courier_company.entity";
 import { CustomerAddresses } from "./customer_addresses.entity";
+import { Shipment } from "./shipment.entity";
   
 @Entity()
 export class Customer {
@@ -30,8 +31,8 @@ export class Customer {
   @OneToMany(() => Rating, (rating) => rating.customer)
     ratings: Rating[];
 
-      @OneToMany(() => shipment_request, (shipment_request: shipment_request) => shipment_request.customer)
-    shipment_request: shipment_request[];
+      @OneToMany(() => Shipment, (shipment) => shipment.customer)
+    shipment: Shipment[];
     
 @ManyToOne(() => courier_company, (company) => company.customer, { nullable: true })
   @JoinColumn({ name: 'company_id' }) // Foreign key column

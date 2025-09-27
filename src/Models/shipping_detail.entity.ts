@@ -18,8 +18,7 @@ export class shipping_detail {
   })
   pricing: shipping_pricing[];
 
-@OneToMany(() => Shipment, (shipment) => shipment.shippingDetail)
-shipments: Shipment[];
+ 
 
 
  

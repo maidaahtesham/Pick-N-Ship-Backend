@@ -65,9 +65,9 @@ rider: Rider;
 // @JoinColumn({ name: 'shipment_id' })
 // shipment: Shipment;
 
-@OneToOne(() => Shipment, (shipment) => shipment.cod_payment)
-  @JoinColumn({ name: 'shipment_id' })
-  shipment: Shipment;
+// @OneToOne(() => Shipment, (shipment) => shipment.cod_payment)
+//   @JoinColumn({ name: 'shipment_id' })
+//   shipment: Shipment;
 
 @ManyToOne(() => courier_company, (company) => company.codPayments)
 @JoinColumn({ name: 'courier_company_id' }) // 👈 Better naming

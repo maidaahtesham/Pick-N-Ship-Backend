@@ -19,6 +19,7 @@ import { company_commission_rate } from './Models/company_commission_rate.entity
 import { shipment_jobs } from './Models/shipment_jobs.entity';
 import { earning } from './Models/earnings.entity';
 import { CustomerAddresses } from './Models/customer_addresses.entity';
+import { parcel_details } from './Models/parcel_detail.entity';
   
   
 config(); // load .env
@@ -48,7 +49,8 @@ company_çonveyance_pricing_details,
 company_commission_rate,
 shipment_jobs,
 earning,
-CustomerAddresses
+CustomerAddresses,
+parcel_details
 
 
 
