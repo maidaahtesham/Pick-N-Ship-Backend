@@ -10,9 +10,10 @@ import { shipping_detail } from '../Models/shipping_detail.entity';
 import { CustomerAddresses } from 'src/Models/customer_addresses.entity';
 import { parcel_details } from 'src/Models/parcel_detail.entity';
 import { Rating } from 'src/Models/ratings.entity';
+import { Rider } from 'src/Models/rider.entity';
  
 @Module({
-            imports: [TypeOrmModule.forFeature([Rating,Customer,shipment_request,Shipment,courier_company,shipping_detail, CustomerAddresses,parcel_details])],
+            imports: [TypeOrmModule.forFeature([Rating,Customer,shipment_request,Shipment,courier_company,shipping_detail, CustomerAddresses,parcel_details,Rider])],
 
   controllers: [CustomerUserController],
   providers: [CustomerUserService],

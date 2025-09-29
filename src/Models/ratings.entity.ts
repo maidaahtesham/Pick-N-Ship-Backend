@@ -15,9 +15,9 @@ export class Rating {
   @Column({ type: 'decimal' ,precision: 5, scale: 2 ,nullable:true })  // 1 to 5
   stars: number;
 
-// @ManyToOne(() => Shipment, (shipment) => shipment.ratings, { onDelete: 'CASCADE' })
-//   @JoinColumn({ name: 'shipment_id' })
-//   shipment: Shipment;
+@ManyToOne(() => Shipment, (shipment) => shipment.ratings, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'shipment_id' })
+  shipment: Shipment;
 
   @ManyToOne(() => Customer, (customer) => customer.ratings, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'customer_id' })

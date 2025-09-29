@@ -22,6 +22,8 @@ import { GetAddressesDto } from 'src/ViewModel/get-addresses.dto';
 import { CreateFullShipmentDTO } from 'src/ViewModel/CreateShipmentRequestDto';
 import {  DataSource } from 'typeorm'; // For transaction
 import { Rating } from 'src/Models/ratings.entity';
+import { CreateRatingDto } from 'src/ViewModel/CreateRatingDto';
+import { Rider } from 'src/Models/rider.entity';
 
 
 @Injectable()
@@ -44,6 +46,11 @@ export class CustomerUserService {
 
        @InjectRepository (Rating)
     private ratingRepository: Repository<Rating>,
+
+    @InjectRepository(Rider)
+    private riderRepository:Repository<Rider>,
+
+
 
     private dataSource: DataSource,  
 
@@ -381,14 +388,14 @@ async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
         name: company.company_name,
         rating: Number(avgRating),
         estimated_delivery_time: estimatedDeliveryTime,
-        price: `${total.toFixed(2)} AED`,
+        price: `${total.toFixed(2)}`,
         payment_details: {
-          standard_delivery_fees: `${baseFare.toFixed(2)} AED`,
-          subtotal: `${baseFare.toFixed(2)} AED`,
-          platform_fee: `${platformFee.toFixed(2)} AED`,
-          pns_commission_5: `${pnsCommission.toFixed(2)} AED`,
-          vat_5_percent: `${vat.toFixed(2)} AED`,
-          total: `${total.toFixed(2)} AED`,
+          standard_delivery_fees: `${baseFare.toFixed(2)} `,
+          subtotal: `${baseFare.toFixed(2)} `,
+          platform_fee: `${platformFee.toFixed(2)}`,
+          pns_commission_5: `${pnsCommission.toFixed(2)}`,
+          vat_5_percent: `${vat.toFixed(2)}`,
+          total: `${total.toFixed(2)}`,
         },
       };
     }));
@@ -688,11 +695,70 @@ async getAllShipments({
 
 
 
-async getAddresses({ customer_id, page = 1, limit = 10 }: GetAddressesDto) {
+// async getAddresses({ customer_id, page = 1, limit = 10 }: GetAddressesDto) {
+//     try {
+//       const query = this.addressRepository
+//         .createQueryBuilder('address')
+//         .where('address.customer_id = :customerId', { customerId: customer_id });
+
+//       query.skip((page - 1) * limit).take(limit);
+
+//       const [data, total] = await query.getManyAndCount();
+
+//       return {
+//         success: true,
+//         message: 'Addresses fetched successfully',
+//         data: {
+//           addresses: data,
+//           pagination: {
+//             total,
+//             currentPage: page,
+//             totalPages: Math.ceil(total / limit),
+//             limit,
+//           },
+//         },
+//       };
+//     } catch (error) {
+//       console.error('Error fetching addresses:', error);
+//       return {
+//         success: false,
+//         message: 'Failed to fetch addresses',
+//         error: error.message,
+//       };
+//     }
+//   }
+async addAddress(data: any): Promise<CustomerAddresses> {
+    const customer = await this.customerRepository.findOne({
+      where: { id: data.customer_id },
+    });
+
+    if (!customer) throw new NotFoundException('Customer not found');
+
+    const address = this.addressRepository.create({
+      customer: customer,
+      street: data.street,
+      city: data.city,
+      country: data.country,
+      building_name: data.building_name,
+      apartment: data.apartment,
+      makani_number: data.makani_number,
+      nearest_landmark: data.nearest_landmark,
+      address_type: data.address_type,
+      is_default: data.is_default || false,
+      createdBy: data.createdBy,
+      updatedBy: data.updatedBy,
+      status: true, // Ensure new address is active
+    });
+
+    return this.addressRepository.save(address);
+  }
+
+  async getAddresses({ customer_id, page = 1, limit = 10 }: GetAddressesDto) {
     try {
       const query = this.addressRepository
         .createQueryBuilder('address')
-        .where('address.customer_id = :customerId', { customerId: customer_id });
+        .where('address.customer_id = :customerId', { customerId: customer_id })
+        .andWhere('address.status = :status', { status: true }); // Fetch only active addresses
 
       query.skip((page - 1) * limit).take(limit);
 
@@ -720,32 +786,114 @@ async getAddresses({ customer_id, page = 1, limit = 10 }: GetAddressesDto) {
       };
     }
   }
-async addAddress(data: any): Promise<CustomerAddresses> {
-    // Use customerRepository to fetch the customer
+
+  async editAddress(customerId: number, addressId: number, data: any): Promise<CustomerAddresses> {
     const customer = await this.customerRepository.findOne({
-        where: { id: data.customer_id },
+      where: { id: customerId },
     });
 
-    if (!customer) throw new Error('Customer not found');
+    if (!customer) throw new NotFoundException('Customer not found');
 
-    // Create the address
-    const address = this.addressRepository.create({
-        customer: customer,
-        street: data.street,
-        city: data.city,
-        country: data.country,
-        building_name: data.building_name,
-        apartment: data.apartment,
-        makani_number: data.makani_number,
-        nearest_landmark: data.nearest_landmark,
-        address_type: data.address_type,
-        is_default: data.is_default || false,
-        createdBy: data.createdBy,
-        updatedBy: data.updatedBy,
-        status: true,
+    const address = await this.addressRepository.findOne({
+      where: { id: addressId, customer: { id: customerId }, status: true },
+    });
+
+    if (!address) throw new NotFoundException('Address not found');
+
+    this.addressRepository.merge(address, {
+      street: data.street,
+      city: data.city,
+      country: data.country,
+      building_name: data.building_name,
+      apartment: data.apartment,
+      makani_number: data.makani_number,
+      nearest_landmark: data.nearest_landmark,
+      address_type: data.address_type,
+      is_default: data.is_default || address.is_default,
+      updatedBy: data.updatedBy,
+      updatedOn: new Date(),
     });
 
     return this.addressRepository.save(address);
-}
+  }
 
+  async deleteAddress(customerId: number, addressId: number): Promise<CustomerAddresses> {
+    const customer = await this.customerRepository.findOne({
+      where: { id: customerId },
+    });
+
+    if (!customer) throw new NotFoundException('Customer not found');
+
+    const address = await this.addressRepository.findOne({
+      where: { id: addressId, customer: { id: customerId }, status: true },
+    });
+
+    if (!address) throw new NotFoundException('Address not found');
+
+    address.status = false;
+    address.updatedOn = new Date();
+
+    return this.addressRepository.save(address);
+  }
+
+
+
+async createRating(createRatingDto: CreateRatingDto): Promise<Response> {
+    try {
+      // Validate foreign keys
+      const shipment = await this.shipmentRepository.findOne({
+        where: { id: createRatingDto.shipment_id, status: true },
+      });
+      if (!shipment) throw new NotFoundException('Shipment not found');
+
+      const customer = await this.customerRepository.findOne({
+        where: { id: createRatingDto.customer_id, status: true },
+      });
+      if (!customer) throw new NotFoundException('Customer not found');
+
+      const rider = await this.riderRepository.findOne({
+        where: { id: createRatingDto.rider_id, status: true },
+      });
+      if (!rider) throw new NotFoundException('Rider not found');
+
+      const company = await this.courierCompanyRepository.findOne({
+        where: { company_id: createRatingDto.company_id, status: true },
+      });
+      if (!company) throw new NotFoundException('Company not found');
+
+      // Create new rating
+      const rating = this.ratingRepository.create({
+        stars: createRatingDto.stars,
+        rider_behavior_score: createRatingDto.rider_behavior_score,
+        on_time_delivery_score: createRatingDto.on_time_delivery_score,
+        affordability_score: createRatingDto.affordability_score,
+        review: createRatingDto.review,
+        shipment: shipment,
+        customer: customer,
+        rider: rider,
+        company: company,
+        createdBy: createRatingDto.customer_id.toString(),  
+        updatedBy: createRatingDto.customer_id.toString(), 
+        status: true,
+      });
+
+      const savedRating = await this.ratingRepository.save(rating);
+
+      const resp = new Response();
+      resp.success = true;
+      resp.message = 'Rating submitted successfully';
+      resp.result = { rating_id: savedRating.id };
+      resp.httpResponseCode = 201;
+      resp.customResponseCode = '201 Created';
+      return resp;
+
+    } catch (error) {
+      const resp = new Response();
+      resp.success = false;
+      resp.message = `Failed to submit rating: ${error.message}`;
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 Bad Request';
+      return resp;
+    }
+  }
 }

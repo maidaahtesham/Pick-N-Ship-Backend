@@ -9,6 +9,7 @@ import { RegularBookingDTO } from '../ViewModel/RegularBookingDTO';
 import { GetAllShipmentsCustomerDto } from 'src/ViewModel/get_all_shipment_customer_dto';
 import { GetAddressesDto } from 'src/ViewModel/get-addresses.dto';
 import { CreateFullShipmentDTO } from 'src/ViewModel/CreateShipmentRequestDto';
+import { CreateRatingDto } from 'src/ViewModel/CreateRatingDto';
  
 // @UseGuards(JwtAuthGuard)
 
@@ -37,14 +38,14 @@ constructor(private readonly customerUserService: CustomerUserService) {}
 //     return this.customerUserService.AddParcelDetails(body.customerId, id, body);
 //   }
 
-
+@UseGuards(JwtAuthGuard)
  @Post('create-full-shipment')
   @HttpCode(200)
   async createFullShipment(@Body(ValidationPipe) body: CreateFullShipmentDTO): Promise<Response> {
     return this.customerUserService.createFullShipment(body);
   }
 
-
+@UseGuards(JwtAuthGuard)
 @Post('get-courier-options')
   @HttpCode(200)
   async getCourierOptions(@Body(ValidationPipe) body: CreateFullShipmentDTO): Promise<Response> {
@@ -78,7 +79,7 @@ async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
     return this.customerUserService.getAllShipments(getAllShipmentsDto);
   }
 
-
+@UseGuards(JwtAuthGuard)
     @Post('add-address')
   async addAddress(@Body() body: any) {
     return this.customerUserService.addAddress(body);
@@ -87,5 +88,31 @@ async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
   @Post('get-addresses')
   async getAddresses(@Body() getAddressesDto: GetAddressesDto) {
     return this.customerUserService.getAddresses(getAddressesDto);
+  }
+
+@UseGuards(JwtAuthGuard)
+@Post('edit-address')
+  async editAddress(@Body() body: any) {
+    const { customer_id, address_id } = body;
+    if (!customer_id || !address_id || isNaN(parseInt(address_id))) {
+      throw new BadRequestException('Invalid customer_id or address_id');
+    }
+    return this.customerUserService.editAddress(customer_id, parseInt(address_id), body);
+  }
+@UseGuards(JwtAuthGuard)
+@Post('delete-address')
+  async deleteAddress(@Body() body: any) {
+    const { customer_id, address_id } = body;
+    if (!customer_id || !address_id || isNaN(parseInt(address_id))) {
+      throw new BadRequestException('Invalid customer_id or address_id');
+    }
+    return this.customerUserService.deleteAddress(customer_id, parseInt(address_id));
+  }
+
+@UseGuards(JwtAuthGuard)
+  @Post('create-rating')
+  async createRating(@Body() createRatingDto: CreateRatingDto ): Promise<Response> {
+ 
+    return this.customerUserService.createRating(createRatingDto );
   }
 }

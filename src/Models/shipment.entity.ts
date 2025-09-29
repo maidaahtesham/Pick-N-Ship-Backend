@@ -47,7 +47,7 @@ export class Shipment {
 
  @Column({nullable:true})
  shipment_created_on: Date;  
- 
+
   @Column({nullable:true})
   pickup_time: Date;  
  
@@ -108,8 +108,8 @@ createdBy: string;
 status?: boolean;
 
 
-// @OneToMany(() => Rating, (rating) => rating.shipment)
-//   ratings: Rating[];
+@OneToMany(() => Rating, (rating) => rating.shipment)
+  ratings: Rating[];
 
 @ManyToOne(() => courier_company, (company) => company.shipments)
 @JoinColumn({ name: 'company_id' })
