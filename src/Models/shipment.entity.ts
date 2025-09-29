@@ -51,6 +51,12 @@ export class Shipment {
   @Column({nullable:true})
   pickup_time: Date;  
  
+ @Column({
+    type: 'enum', nullable:true,
+    enum: ['paid', 'unpaid'],
+    default: 'unpaid',
+  })
+  payment_status: string; 
 
 
   // @Column({
@@ -82,12 +88,6 @@ export class Shipment {
 //   receiver_name: string;
 //   @Column({nullable:true})
 //   receiver_phone: string;
-//  @Column({
-//     type: 'enum',
-//     enum: ['paid', 'unpaid'],
-//     default: 'unpaid',
-//   })
-//   payment_status: string; 
 
 //   @Column({ type: 'text', nullable: true })
 //   special_instruction: string;
@@ -125,8 +125,8 @@ rider: Rider;
     @OneToMany(() => parcel_details, (parcel) => parcel.shipments, { cascade: true })
   parcels: parcel_details[];
 
-// @OneToOne(() => CodPayment, (codPayment) => codPayment.shipment, { cascade: true })
-//   cod_payment: CodPayment;
+@OneToOne(() => CodPayment, (codPayment) => codPayment.shipment, { cascade: true })
+  cod_payment: CodPayment;
 
  
 

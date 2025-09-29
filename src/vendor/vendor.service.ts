@@ -931,132 +931,142 @@ async addVendorCompleteDetails(data: VendorOperationDTO): Promise<Response> {
 
 
 
-// async getShipmentDetailsById(shipmentId: number) {
-//   try {
-//     // Fetch shipment with all relevant relations
-//     const shipment = await this.shipmentRepository.findOne({
-//       where: { id: shipmentId },
-//       relations: [
-//         'rider',
-//         'customer',
-//         'cod_payment',
-//         'courierCompany',
-//         // 'courierCompany.shippingDetails',
-//         'courierCompany.commissionRates',
-//       ],
-//     });
+async getShipmentDetailsById(shipmentId: number) {
+  try {
+    // Fetch shipment with all relevant relations
+    const shipment = await this.shipmentRepository.findOne({
+      where: { id: shipmentId },
+      relations: [
+        'rider',
+        'customer',
+        'cod_payment',
+        'parcels',
+        'courierCompany',
+        // 'courierCompany.shippingDetails',
+        'courierCompany.commissionRates',
+        
+      ],
+    });
 
-//     if (!shipment) throw new Error('Shipment not found');
+    if (!shipment) throw new Error('Shipment not found');
 
-//     const rider = shipment.rider || null;
-//     const customer = shipment.customer || null;
-//     const codPayment = shipment.cod_payment || null;
-//     const company = shipment.courierCompany || null;
+    const rider = shipment.rider || null;
+    const customer = shipment.customer || null;
+    const codPayment = shipment.cod_payment || null;
+    const company = shipment.courierCompany || null;
+    const parcels = shipment.parcels || [];
 
-//     // ---------------------------
-//     // Dynamic Delivery Fees Logic
-//     // ---------------------------
-//  // Dynamic Delivery Fees Logic
-// let paymentDetails = {
-//   standardDeliveryFees: 0,
-//   subtotal: 0,
-//   platformFees: 0,
-//   vat: 0,
-//   pnsCommission: 0,
-//   total: 0,
-// };
+    // ---------------------------
+    // Dynamic Delivery Fees Logic
+    // ---------------------------
+ // Dynamic Delivery Fees Logic
+let paymentDetails = {
+  standardDeliveryFees: 0,
+  subtotal: 0,
+  platformFees: 0,
+  vat: 0,
+  pnsCommission: 0,
+  total: 0,
+};
 
-// if (company && rider) {
-//   const vehicleType = rider.vehicle_type.toLowerCase();
+if (company && rider && parcels.length>0) {
+  const vehicleType = rider.vehicle_type.toLowerCase();
+      const packageSize = parcels[0].package_size?.toLowerCase();
 
-//   const conveyanceDetail = await this.companyConveyanceDetailsRepository
-//     .createQueryBuilder('conveyance')
-//     .leftJoinAndSelect('conveyance.pricing', 'pricing')
-//     .where('conveyance.company_id = :companyId', { companyId: company.company_id })
-//     .andWhere('conveyance.conveyance_types = :vehicleType', { vehicleType })
-//     .getOne();
+  const conveyanceDetail = await this.companyConveyanceDetailsRepository
+    .createQueryBuilder('conveyance')
+    .leftJoinAndSelect('conveyance.pricing', 'pricing')
+    .where('conveyance.company_id = :companyId', { companyId: company.company_id })
+    .andWhere('conveyance.conveyance_types = :vehicleType', { vehicleType })
+    .getOne();
 
-//   if (conveyanceDetail) {
-//     const pricing = conveyanceDetail.pricing.find(p => p.size === shipment.package_size);
+  if (conveyanceDetail) {
+    const pricing = conveyanceDetail.pricing.find(p => p.size === packageSize);
 
-//     if (pricing) {
-//       const baseFare = pricing.baseFare || 0;
-//       const distanceFare = (rider.distance || 0) * (pricing.pricePerKm || 0);
+    if (pricing) {
+      const baseFare = pricing.baseFare || 0;
+      const distanceFare = (rider.distance || 0) * (pricing.pricePerKm || 0);
 
-//       const standardDeliveryFees = baseFare + distanceFare;
+      const standardDeliveryFees = baseFare + distanceFare;
 
-//       // Commission calculation as percentage (for PNS info only)
-//       const commissionRate = parseFloat(company.commissionRates?.[0]?.commission_rate || '0'); // e.g., 10
-//       const pnsCommission = standardDeliveryFees * (commissionRate / 100);
+      // Commission calculation as percentage (for PNS info only)
+      const commissionRate = parseFloat(company.commissionRates?.[0]?.commission_rate || '0'); // e.g., 10
+      const pnsCommission = standardDeliveryFees * (commissionRate / 100);
 
-//       const subtotal = standardDeliveryFees;
-//       const platformFees = 1; // example platform fee
-//       const vat = Math.ceil(subtotal * 0.06); // 6% VAT
-//       const total = subtotal + platformFees + vat; // **exclude commission**
+      const subtotal = standardDeliveryFees;
+      const platformFees = 1; // example platform fee
+      const vat = Math.ceil(subtotal * 0.06); // 6% VAT
+      const total = subtotal + platformFees + vat; // **exclude commission**
 
-//       paymentDetails = {
-//         standardDeliveryFees,
-//         subtotal,
-//         platformFees,
-//         vat,
-//         pnsCommission,
-//         total,
-//       };
-//     }
-//   }
-// }
+      paymentDetails = {
+        standardDeliveryFees,
+        subtotal,
+        platformFees,
+        vat,
+        pnsCommission,
+        total,
+      };
+    }
+  }
+}
 
-//   const companyDocuments = await this.companyDocumentRepository.find({
-//       where: { company_id: company?.company_id },
-//     });
+  const companyDocuments = await this.companyDocumentRepository.find({
+      where: { company_id: company?.company_id },
+    });
   
-    // const shipmentDetails: GetShipmentDetailsByIdDto = {
-    //   shipmentId: shipment.tracking_number || '',
-    //   date: shipment.createdOn?.toISOString().split('T')[0] || '',
-    //   parcelType: shipment.parcel_type || '',
- 
-    //   parcelWeight: '', // compute if needed
-    //    amount: codPayment?.cod_amount?.toString() || '',
-    //    shipmentType: shipment.payment_mode || '',
-    //   customerName: customer ? `${customer.firstname} ${customer.lastname}` : '',
-    //   customerNumber: customer?.phone_number || '',
-    //   senderName: shipment.sender_name || '',
-    //   senderNumber: shipment.sender_phone || '',
-    //   receiverName: shipment.receiver_name || '',
-    //   receiverPhoneNumber: shipment.receiver_phone || '',
-    //   assignedRider: rider?.rider_name || '',
-    //   pickUpTime: shipment.pickup_time?.toLocaleTimeString() || '',
-    //    isCodReceived: codPayment?.payment_status === 'paid',
-  
-    //   parcelPhotos: [], // Fetch if available
-    //   companyDetails: { company_name: company?.company_name || '' ,
-    //   documents: companyDocuments.map(doc=>({
-    //    establishment_card_document: [
-    //         { side_front: 'front', file_front: doc.establishment_card_front,
-    //           side_back:'back', file_back:doc.establishment_card_back
-    //         },  
-    //       ],
-    //       establishment_card_expiry_date: doc.trade_license_expiry_date,
-    //     })),
-    //   },
-      // orderTracking: {
-      //   awaiting: { status: 'Completed', time: shipment.createdOn?.toLocaleString() || '' },
-      //   pickup: { status: 'Completed', time: shipment.pickup_time?.toLocaleString() || '' },
-      //   inTransit: { status: 'Completed', time: shipment.updatedOn?.toLocaleString() || '' },
-      //   outForDelivery: { status: 'Pending', time: '' },
-      //    codCollected: { status: codPayment?.payment_status || 'Pending', time: codPayment?.collectedOn?.toLocaleString() || '' },
-      // },
-      // vehicleType: rider?.vehicle_type || '',
-    //   paymentDetails,
-    //   codMarkedAsReceivedByAdmin: { status: 'Pending', time: '' }, // handle admin logic if needed
-    // };
+    const shipmentDetails: GetShipmentDetailsByIdDto = {
+      shipmentId: shipment.tracking_number || '',
+      date: shipment.createdOn?.toISOString().split('T')[0] || '',
+      parcelType: shipment.parcel_type || '',
+       parcelSize: shipment.parcels?.[0]?.package_size || '',         
+      parcelWeight: '', // compute if needed
+      parameters: `${shipment.parcels?.[0]?.length || ''}x${shipment.parcels?.[0]?.width || ''}x${shipment.parcels?.[0]?.height || ''}`, 
+      amount: codPayment?.cod_amount?.toString() || '',
+       shipmentStatus: shipment.shipment_status || '', 
+      shipmentType: shipment.payment_mode || '',
+      customerName: customer ? `${customer.firstname} ${customer.lastname}` : '',
+      customerNumber: customer?.phone_number || '',
+      senderName: parcels[0]?.sender_name || '',
+      senderNumber: parcels[0]?.sender_phone || '',
+      receiverName: parcels[0]?.receiver_name || '',
+      receiverPhoneNumber: parcels[0]?.receiver_phone || '',
+      assignedRider: rider?.rider_name || '',
+      pickUpTime: shipment.pickup_time?.toLocaleTimeString() || '',
+       deliveredTime: shipment.updatedOn?.toLocaleTimeString() || '',
+       isCodReceived: codPayment?.payment_status === 'paid',
+        pickupLocation: shipment.pickup_location || '',
+        dropOffLocation: shipment.parcels?.[0]?.dropoff_location || '',
+        parcelDetailDescription: shipment.parcels?.[0]?.description || '',
+      parcelPhotos: [], // Fetch if available
+      companyDetails: { company_name: company?.company_name || '' ,
+      documents: companyDocuments.map(doc=>({
+       establishment_card_document: [
+            { side_front: 'front', file_front: doc.establishment_card_front,
+              side_back:'back', file_back:doc.establishment_card_back
+            },  
+          ],
+          establishment_card_expiry_date: doc.trade_license_expiry_date,
+        })),
+      },
+      orderTracking: {
+        awaiting: { status: 'Completed', time: shipment.createdOn?.toLocaleString() || '' },
+        pickup: { status: 'Completed', time: shipment.pickup_time?.toLocaleString() || '' },
+        inTransit: { status: 'Completed', time: shipment.updatedOn?.toLocaleString() || '' },
+        outForDelivery: { status: 'Pending', time: '' },
+         delivered: { status: shipment.shipment_status === 'delivered' ? 'Completed' : 'Pending', time: '' },
+        codCollected: { status: codPayment?.payment_status || 'Pending', time: codPayment?.collectedOn?.toLocaleString() || '' },
+      },
+      vehicleType: rider?.vehicle_type || '',
+      paymentDetails,
+      codMarkedAsReceivedByAdmin: { status: 'Pending', time: '' }, // handle admin logic if needed
+    };
 
 
-    //   return shipmentDetails;
-    // } catch (error) {
-    //   throw new Error(`Error fetching shipment details: ${error.message}`);
-    // }
-// }  
+      return shipmentDetails;
+    } catch (error) {
+      throw new Error(`Error fetching shipment details: ${error.message}`);
+    }
+}  
 // async updateProfileStatus(data:profile_status_update_dto): Promise<Response> {
 //   const resp = new Response();
 //   try {
@@ -1092,4 +1102,3 @@ async addVendorCompleteDetails(data: VendorOperationDTO): Promise<Response> {
 
 // } 
   }
- 

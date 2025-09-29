@@ -32,15 +32,18 @@ import { earning } from './Models/earnings.entity';
 import { shipment_jobs } from './Models/shipment_jobs.entity';
 import { CustomerAddresses } from './Models/customer_addresses.entity';
 import { parcel_details } from './Models/parcel_detail.entity';
+import { UploadPictureModule } from './upload-pictures/upload_picture/upload-picture.module';
+import { PaymentTransaction } from './Models/payment_transactions.entity';
    @Module({
   imports: [
     // Load environment variables globally
     ConfigModule.forRoot({ isGlobal: true , 
-      envFilePath: '.env',     load: [() => {
+      envFilePath: '.env',     
+      load: [() => {
         console.log('Loading .env file:', process.env); // Debug log
         return process.env;
       }], }),
-
+    UploadPictureModule,
     AuthModule,
     AdminPortalModule,
     CustomerUserModule,
@@ -89,7 +92,8 @@ import { parcel_details } from './Models/parcel_detail.entity';
         shipment_jobs,
         earning,
        CustomerAddresses,
-       parcel_details
+       parcel_details,
+       PaymentTransaction
         
       ],
       // migrations: ['dist/migrations/*.ts'],

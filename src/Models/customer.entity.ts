@@ -61,5 +61,7 @@ status: boolean;
 is_email_verified:boolean;
 
 
+@Column({ length: 500, nullable: true }) // New column for profile image URL
+  profile_image_url: string;
 
   }

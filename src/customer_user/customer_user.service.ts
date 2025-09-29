@@ -1,6 +1,6 @@
 // src/customer-user/customer-user.service.ts
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { QueryRunner, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { shipment_request } from '../Models/shipment_request.entity';
 
@@ -24,10 +24,18 @@ import {  DataSource } from 'typeorm'; // For transaction
 import { Rating } from 'src/Models/ratings.entity';
 import { CreateRatingDto } from 'src/ViewModel/CreateRatingDto';
 import { Rider } from 'src/Models/rider.entity';
+import { UploadPictureService } from 'src/upload-pictures/upload_picture/upload_picture.service';
+import { ObjectCannedACL, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { ConfigService } from '@nestjs/config';
+import { PaymentDTO } from 'src/ViewModel/PaymentDto';
+import { PaymentTransaction } from 'src/Models/payment_transactions.entity';
+import { UpdateCustomerProfileDto } from 'src/ViewModel/UpdateCustomerProfileDto';
 
 
 @Injectable()
 export class CustomerUserService {
+
+  private s3Client: S3Client;
   constructor(
     @InjectRepository(shipment_request)
     private shipmentRequestRepository: Repository<shipment_request>,
@@ -50,11 +58,28 @@ export class CustomerUserService {
     @InjectRepository(Rider)
     private riderRepository:Repository<Rider>,
 
-
-
+    @InjectRepository(UploadPictureService)
+    private uploadPictureService: UploadPictureService,
+    private configService: ConfigService,
     private dataSource: DataSource,  
 
-  ) {}
+  ) {
+
+    const region = this.configService.get<string>('AWS_REGION');
+    const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
+
+    if (!region || !accessKeyId || !secretAccessKey) {
+      throw new Error('Missing AWS configuration in .env file');
+    }
+
+    this.s3Client = new S3Client({
+      region,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });}
 
   //   async createShipmentRequest(customerId: number, data: { pickup_location: string; parcel_type: 'regular' | 'bulk'; request_date?: string; dropoff_locations?: string[]; tracking_number:string; }): Promise<Response> {
   //   const resp = new Response();
@@ -206,128 +231,296 @@ export class CustomerUserService {
   //   }
   // }
   
-async createFullShipment(data: CreateFullShipmentDTO): Promise<Response> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+// async createFullShipment(data: CreateFullShipmentDTO): Promise<Response> {
+//     const queryRunner = this.dataSource.createQueryRunner();
+//     await queryRunner.connect();
+//     await queryRunner.startTransaction();
 
-    try {
-      const customer = await queryRunner.manager.findOne(Customer, {
-        where: { id: data.customerId },
-        relations: ['company'],
-      });
-      if (!customer) {
-        throw new BadRequestException('Customer not found');
-      }
+//     try {
+//       const customer = await queryRunner.manager.findOne(Customer, {
+//         where: { id: data.customerId },
+//         relations: ['company'],
+//       });
+//       if (!customer) {
+//         throw new BadRequestException('Customer not found');
+//       }
 
-      const requestDate = data.request_date ? new Date(data.request_date) : new Date();
-      if (isNaN(requestDate.getTime())) {
-        throw new BadRequestException('Invalid request_date provided');
-      }
+//       const requestDate = data.request_date ? new Date(data.request_date) : new Date();
+//       if (isNaN(requestDate.getTime())) {
+//         throw new BadRequestException('Invalid request_date provided');
+//       }
+ 
 
-       if (data.parcel_type === 'bulk' && data.dropoff_locations.length < 2) {
-        throw new BadRequestException('Bulk shipment requires at least 2 dropoff locations');
-      }
-      if (data.parcel_type === 'regular' && data.dropoff_locations.length !== 1) {
-        throw new BadRequestException('Regular shipment requires exactly 1 dropoff location');
-      }
-      if (data.parcels.length !== data.dropoff_locations.length) {
-        throw new BadRequestException('Number of parcels must match number of dropoff locations');
-      }
+//       // Create shipment
+//       const shipment = queryRunner.manager.create(Shipment, {
+//         pickup_location: data.pickup_location,
+//         parcel_type: data.parcel_type,
+//         shipment_status: 'pending',
+//         payment_mode: 'prepaid',
+//         shipment_created_on: new Date(),
+//         pickup_time: requestDate,
+//         customer: customer,
+//         createdBy: 'system',
+//         updatedBy: 'system',
+//         status: true,
+//       });
 
-      // Create shipment
-      const shipment = queryRunner.manager.create(Shipment, {
-        pickup_location: data.pickup_location,
-        parcel_type: data.parcel_type,
-        shipment_status: 'pending',
-        payment_mode: 'prepaid',
-        shipment_created_on: new Date(),
-        pickup_time: requestDate,
-        customer: customer,
-        createdBy: 'system',
-        updatedBy: 'system',
+//       const savedShipment = await queryRunner.manager.save(shipment);
+
+//       // Add parcels
+//       let totalCodAmount = 0;
+//       const parcelEntities: parcel_details[] = data.parcels.map((p, i) => {
+//         const parcel = queryRunner.manager.create(parcel_details, {
+//           shipments: { id: savedShipment.id }, // Use ID for relation
+//           dropoff_location: p.dropoff_location,
+//           description: p.description || '',
+//           sender_name: p.sender_name,
+//           sender_phone: p.sender_phone,
+//           receiver_name: p.receiver_name,
+//           receiver_phone: p.receiver_phone,
+//           package_size: p.package_size,
+//           weight: p.weight,
+//           length: p.length,
+//           height: p.height,
+//           width: p.width || undefined,  
+//           // parcel_photos: p.parcel_photos || [],
+//           cod_amount: p.cod_amount || 0,
+//           createdBy: 'system',
+//           updatedBy: 'system',
+//           status: true,
+//         });
+//         totalCodAmount += (p.cod_amount || 0);
+//         return parcel;
+//       });
+
+//       const savedParcels = await queryRunner.manager.save(parcel_details, parcelEntities);
+//       const trackingNumber = `SHIP-${savedShipment.id}-${Date.now()}`;
+ 
+
+//       // Update shipment with tracking_number
+//       savedShipment.tracking_number = trackingNumber;
+//       await queryRunner.manager.save(shipment);
+
+//       await queryRunner.commitTransaction();
+
+//       const resp = new Response();
+//       resp.success = true;
+//       resp.message = 'Full shipment created successfully';
+//       resp.result = {
+//         shipment_id: savedShipment.id,
+//         tracking_number: savedShipment.tracking_number,
+//         pickup_location: savedShipment.pickup_location,
+//         parcel_type: savedShipment.parcel_type,
+//         // dropoff_locations: data.dropoff_locations,
+//         parcels: savedParcels.map((parcel) => ({
+//           parcel_id: parcel.parcel_id,
+//           dropoff_location: parcel.dropoff_location,
+//           size: parcel.package_size,
+//           length:parcel.length,
+//           width:parcel.width,
+//           height:parcel.height,
+//           weight: parcel.weight,
+          
+          
+
+//         })),
+//         total_cod_amount: totalCodAmount,
+//         request_date: requestDate,
+//         createdOn: savedShipment.createdOn,
+//         updatedOn: savedShipment.updatedOn,
+//       };
+//       resp.httpResponseCode = 200;
+//       resp.customResponseCode = '200 OK';
+//       return resp;
+
+//     } catch (error) {
+//       await queryRunner.rollbackTransaction();
+//       const resp = new Response();
+//       resp.success = false;
+//       resp.message = 'Failed to create full shipment: ' + error.message;
+//       resp.httpResponseCode = 400;
+//       resp.customResponseCode = '400 Bad Request';
+//       return resp;
+//     } finally {
+//       await queryRunner.release();
+//     }
+//   }
+
+private async uploadParcelPhotos(
+  parcelId: number,
+  files: Express.Multer.File[],
+  customerId: string,
+  queryRunner: QueryRunner
+): Promise<string[]> {
+  if (!files || files.length === 0) {
+    return [];
+  }
+
+  const uploadPromises = files.map(async (file) => {
+    const Key = `uploads/${Date.now()}-${file.originalname}`;
+    const params = {
+      Bucket: this.configService.get<string>('S3_BUCKET_NAME'),
+      Key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      ACL: ObjectCannedACL.public_read, // Corrected to match AWS SDK casing
+    };
+
+    await this.s3Client.send(new PutObjectCommand(params));
+    return `https://${this.configService.get<string>('S3_BUCKET_NAME')}.s3.${this.configService.get<string>('AWS_REGION')}.amazonaws.com/${Key}`;
+  });
+
+  const urls = await Promise.all(uploadPromises);
+  const parcel = await queryRunner.manager.findOneOrFail(parcel_details, { where: { parcel_id: parcelId } });
+  parcel.parcel_photos = [...(parcel.parcel_photos || []), ...urls];
+  parcel.updatedBy = customerId ;
+  parcel.updatedOn = new Date();
+  await queryRunner.manager.save(parcel);
+  return urls;
+}
+
+async createFullShipment(data: CreateFullShipmentDTO, files: Express.Multer.File[], customerId: string): Promise<Response> {
+  const queryRunner = this.dataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+
+const rawCustomerId = (data.customerId || "").toString().trim();
+const cleanedCustomerId = rawCustomerId.replace(/['"]+/g, ""); // remove quotes
+const numericCustomerId = parseInt(cleanedCustomerId, 10);
+
+console.log({
+  raw: data.customerId,
+  afterTrim: rawCustomerId,
+  afterClean: cleanedCustomerId,
+  parsed: numericCustomerId,
+});
+
+    
+    const customer = await queryRunner.manager.findOne(Customer, {
+      where: { id: numericCustomerId },
+      relations: ['company'],
+    });
+if (!customer) {
+      throw new BadRequestException(`Customer with ID ${numericCustomerId} not found`);
+    }
+
+    const requestDate = data.request_date ? new Date(data.request_date) : new Date();
+    if (isNaN(requestDate.getTime())) {
+      throw new BadRequestException('Invalid request_date provided');
+    }
+
+    // Create shipment
+    const shipment = queryRunner.manager.create(Shipment, {
+      pickup_location: data.pickup_location,
+      parcel_type: data.parcel_type,
+      shipment_status: 'pending',
+      payment_mode: 'prepaid',
+      payment_status: 'unpaid',
+      shipment_created_on: new Date(),
+      pickup_time: requestDate,
+      customer: { id: numericCustomerId },
+      createdOn: new Date(),
+      updatedOn: new Date(),
+      createdBy:  customerId ,
+      updatedBy: customerId ,
+      status: true,
+    
+    });
+    console.log(customerId)
+    const savedShipment = await queryRunner.manager.save(shipment);
+
+    let totalCodAmount = 0;
+    const parcelEntities: parcel_details[] = [];
+    let fileIndex = 0;
+    const totalFiles = files.length;
+    const filesPerParcel = Math.floor(totalFiles / data.parcels.length) || 1;
+
+    for (const [index, p] of data.parcels.entries()) {
+      const startIdx = fileIndex;
+      const endIdx = Math.min(fileIndex + filesPerParcel, totalFiles);
+      const parcelFiles = files.slice(startIdx, endIdx);
+      fileIndex = endIdx;
+
+      const parcel = queryRunner.manager.create(parcel_details, {
+        shipments: savedShipment, // Set the relation to the saved Shipment entity
+        dropoff_location: p.dropoff_location,
+        description: p.description || '', // Handle undefined description
+        sender_name: p.sender_name,
+        sender_phone: p.sender_phone,
+        receiver_name: p.receiver_name,
+        receiver_phone: p.receiver_phone,
+        package_size: p.package_size,
+        weight: p.weight,
+        length: p.length,
+        height: p.height,
+        width: p.width || undefined, // Handle optional width
+        cod_amount: p.cod_amount || 0, // Handle optional cod_amount
+        createdBy: customerId ,
+        createdOn: new Date(),
+        updatedOn: new Date(),
+        updatedBy: customerId ,
         status: true,
       });
 
-      const savedShipment = await queryRunner.manager.save(shipment);
+      const savedParcel = await queryRunner.manager.save(parcel);
 
-      // Add parcels
-      let totalCodAmount = 0;
-      const parcelEntities: parcel_details[] = data.parcels.map((p, i) => {
-        const parcel = queryRunner.manager.create(parcel_details, {
-          shipments: { id: savedShipment.id }, // Use ID for relation
-          dropoff_location: data.dropoff_locations[i],
-          description: p.description || '',
-          sender_name: p.sender_name,
-          sender_phone: p.sender_phone,
-          receiver_name: p.receiver_name,
-          receiver_phone: p.receiver_phone,
-          package_size: p.package_size,
-          weight: p.weight,
-          length: p.length,
-          height: p.height,
-          width: p.width || undefined,  
-          parcel_photos: p.parcel_photos || [],
-          cod_amount: p.cod_amount || 0,
-          createdBy: 'system',
-          updatedBy: 'system',
-          status: true,
-        });
-        totalCodAmount += (p.cod_amount || 0);
-        return parcel;
-      });
+      if (parcelFiles.length > 0) {
+        const photoUrls = await this.uploadParcelPhotos(savedParcel.parcel_id, parcelFiles, customerId, queryRunner);
+        savedParcel.parcel_photos = photoUrls;
+      }
 
-      const savedParcels = await queryRunner.manager.save(parcel_details, parcelEntities);
-
-      // Update shipment tracking
-      savedShipment.tracking_number = `SHIP-${savedShipment.id}-${Date.now()}`;
-      await queryRunner.manager.save(shipment);
-
-      await queryRunner.commitTransaction();
-
-      const resp = new Response();
-      resp.success = true;
-      resp.message = 'Full shipment created successfully';
-      resp.result = {
-        shipment_id: savedShipment.id,
-        tracking_number: savedShipment.tracking_number,
-        pickup_location: savedShipment.pickup_location,
-        parcel_type: savedShipment.parcel_type,
-        dropoff_locations: data.dropoff_locations,
-        parcels: savedParcels.map((parcel) => ({
-          parcel_id: parcel.parcel_id,
-          dropoff_location: parcel.dropoff_location,
-          size: parcel.package_size,
-          length:parcel.length,
-          width:parcel.width,
-          height:parcel.height,
-          weight: parcel.weight,
-          
-          
-
-        })),
-        total_cod_amount: totalCodAmount,
-        request_date: requestDate,
-        createdOn: savedShipment.createdOn,
-        updatedOn: savedShipment.updatedOn,
-      };
-      resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
-      return resp;
-
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      const resp = new Response();
-      resp.success = false;
-      resp.message = 'Failed to create full shipment: ' + error.message;
-      resp.httpResponseCode = 400;
-      resp.customResponseCode = '400 Bad Request';
-      return resp;
-    } finally {
-      await queryRunner.release();
+      totalCodAmount += (p.cod_amount || 0);
+      parcelEntities.push(savedParcel);
     }
-  }
 
+    const savedParcels = await queryRunner.manager.save(parcel_details, parcelEntities);
+    const trackingNumber = `SHIP-${savedShipment.id}-${Date.now()}`;
+
+    savedShipment.tracking_number = trackingNumber;
+    await queryRunner.manager.save(shipment);
+
+    await queryRunner.commitTransaction();
+
+    const resp = new Response();
+    resp.success = true;
+    resp.message = 'Full shipment created successfully';
+    resp.result = {
+      shipment_id: savedShipment.id,
+      tracking_number: savedShipment.tracking_number,
+      pickup_location: savedShipment.pickup_location,
+      parcel_type: savedShipment.parcel_type,
+      parcels: savedParcels.map((parcel) => ({
+        parcel_id: parcel.parcel_id,
+        dropoff_location: parcel.dropoff_location,
+        size: parcel.package_size,
+        length: parcel.length,
+        width: parcel.width,
+        height: parcel.height,
+        weight: parcel.weight,
+        parcel_photos: parcel.parcel_photos || [],
+      })),
+      total_cod_amount: totalCodAmount,
+      request_date: requestDate,
+      createdOn: savedShipment.createdOn,
+      updatedOn: savedShipment.updatedOn,
+    };
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    return resp;
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    const resp = new Response();
+    resp.success = false;
+    resp.message = 'Failed to create full shipment: ' + error.message;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 Bad Request';
+    return resp;
+  } finally {
+    await queryRunner.release();
+  }
+}
 
 async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
   const queryRunner = this.dataSource.createQueryRunner();
@@ -384,6 +577,7 @@ async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
       const estimatedDeliveryTime = '30 Mins';
 
       return {
+        company_id:company.company_id,
         logo: company.logo || '',
         name: company.company_name,
         rating: Number(avgRating),
@@ -645,6 +839,7 @@ async getAllShipments({
        const query = this.shipmentRepository
         .createQueryBuilder('shipment')
          .leftJoinAndSelect('shipment.customer', 'customer')
+         .leftJoinAndSelect('shipment.parcels','parcels')
          .leftJoinAndSelect('shipment.rider', 'rider')
         .leftJoinAndSelect('shipment.courierCompany', 'company')
          .where('shipment.customer_id = :customerId', { customerId: customer_id });
@@ -896,4 +1091,197 @@ async createRating(createRatingDto: CreateRatingDto): Promise<Response> {
       return resp;
     }
   }
+
+
+
+  async processPayment(shipmentId: number, paymentDTO: PaymentDTO): Promise<any> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const shipment = await queryRunner.manager.findOneOrFail(Shipment, {
+        where: { id: shipmentId },
+        relations: ['parcels', 'courierCompany', 'codPayment'],
+      });
+
+      if (shipment.shipment_status !== 'accepted') {
+        throw new Error('Shipment must be accepted by courier before payment');
+      }
+
+      const totalAmount = this.calculateTotalAmount(shipment);
+      const paymentBreakdown = {
+        base_price: shipment.parcels.reduce((sum, parcel) => sum + (parcel.cod_amount || 0), 0),
+        cod_amount: shipment.payment_mode === 'cod' ? totalAmount : 0,
+        total: totalAmount,
+      };
+
+      if (!paymentDTO.paymentMethod || !paymentDTO.nameOnCard) {
+        throw new Error('Payment method and name on card are required');
+      }
+
+      // Mock payment gateway (replace with real integration)
+      const paymentSuccess = await this.processPaymentGateway(paymentDTO, totalAmount);
+      if (!paymentSuccess) {
+        throw new Error('Payment gateway rejected the transaction');
+      }
+
+      // Create payment transaction record
+      const paymentTransaction = queryRunner.manager.create(PaymentTransaction, {
+        shipment,
+        paymentMethod: paymentDTO.paymentMethod,
+        nameOnCard: paymentDTO.nameOnCard,
+        cardTokenOrLast4: '****-1234', // Mocked; replace with gateway token
+        amount: totalAmount,
+        paymentStatus: 'success',
+        transactionId: `TXN-${Date.now()}`, // Mocked; replace with gateway transaction ID
+        createdBy: paymentDTO.customerId.toString(),
+        updatedBy: paymentDTO.customerId.toString(),
+      });
+      await queryRunner.manager.save(paymentTransaction);
+
+      // Update shipment
+      shipment.payment_status = 'paid'; // Add payment_status column if not present
+      shipment.updatedOn = new Date();
+      shipment.updatedBy = paymentDTO.customerId.toString();
+      await queryRunner.manager.save(shipment);
+
+      // Update COD payment if applicable
+      if (shipment.payment_mode === 'cod' && shipment.cod_payment) {
+        shipment.cod_payment.payment_status = 'paid';
+        shipment.cod_payment.collectedOn = new Date();
+        shipment.cod_payment.updatedBy = paymentDTO.customerId.toString();
+        shipment.cod_payment.updatedOn = new Date();
+        await queryRunner.manager.save(shipment.cod_payment);
+      }
+
+      await queryRunner.commitTransaction();
+
+      return {
+        shipmentId: shipment.id,
+        tracking_number: shipment.tracking_number,
+        payment_status: shipment.payment_status,
+        payment_breakdown: paymentBreakdown,
+        payment_method: paymentDTO.paymentMethod,
+        transaction_id: paymentTransaction.transactionId,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private calculateTotalAmount(shipment: Shipment): number {
+    return shipment.parcels.reduce((sum, parcel) => sum + (parcel.cod_amount || 0), 0);
+  }
+
+  private async processPaymentGateway(paymentDTO: PaymentDTO, amount: number): Promise<boolean> {
+    // Replace with actual payment gateway integration (e.g., Stripe)
+    return true; // Mock success
+  }
+
+
+private async uploadProfileImage(
+    customerId: number,
+    file: Express.Multer.File,
+    queryRunner: QueryRunner,
+  ): Promise<string> {
+    if (!file) {
+      return '';
+    }
+
+    const Key = `profile/${customerId}/${Date.now()}-${file.originalname}`;
+    const params = {
+      Bucket: this.configService.get<string>('S3_BUCKET_NAME'),
+      Key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+     ACL: ObjectCannedACL.public_read,
+    };
+
+    await this.s3Client.send(new PutObjectCommand(params));
+    return `https://${this.configService.get<string>('S3_BUCKET_NAME')}.s3.${this.configService.get<string>('AWS_REGION')}.amazonaws.com/${Key}`;
+  }
+
+  async updateCustomerProfile(data: UpdateCustomerProfileDto, customerId: string): Promise<Response> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+  const rawCustomerId = (data.customerId || "").toString().trim();
+const cleanedCustomerId = rawCustomerId.replace(/['"]+/g, ""); // remove quotes
+const numericCustomerId = parseInt(cleanedCustomerId, 10);
+
+console.log({
+  raw: data.customerId,
+  afterTrim: rawCustomerId,
+  afterClean: cleanedCustomerId,
+  parsed: numericCustomerId,
+});
+      const customer = await queryRunner.manager.findOneOrFail(Customer, {
+        where: { id: numericCustomerId },
+      });
+      if (!customer) {
+        throw new BadRequestException(`Customer with ID ${numericCustomerId} not found`);
+      }
+
+      // Update customer fields
+      const updatedCustomer = queryRunner.manager.merge(Customer, customer, {
+        firstname: data.first_name || customer.firstname,
+        lastname: data.last_name || customer.lastname,
+        email: data.email_address || customer.email,
+        phone_number: data.phone_number || customer.phone_number,
+        user_type: data.user_type || customer.user_type,
+        is_email_verified: data.is_email_verified ?? customer.is_email_verified,
+        updatedOn: new Date(),
+        updatedBy: customerId,
+      });
+
+      // Handle profile image upload
+      if (data.files && data.files.length > 0) {
+        if (data.files.length > 1) {
+          throw new BadRequestException('Only one profile image is allowed');
+        }
+        const profileImageUrl = await this.uploadProfileImage(numericCustomerId, data.files[0], queryRunner);
+        updatedCustomer.profile_image_url = profileImageUrl;
+      }
+
+      await queryRunner.manager.save(updatedCustomer);
+
+      await queryRunner.commitTransaction();
+
+      const resp = new Response();
+      resp.success = true;
+      resp.message = 'Customer profile updated successfully';
+      resp.result = {
+        id: updatedCustomer.id,
+        firstname: updatedCustomer.firstname,
+        lastname: updatedCustomer.lastname,
+        email: updatedCustomer.email,
+        phone_number: updatedCustomer.phone_number,
+        user_type: updatedCustomer.user_type,
+        is_email_verified: updatedCustomer.is_email_verified,
+        profile_image_url: updatedCustomer.profile_image_url,
+        createdOn: updatedCustomer.createdOn,
+        updatedOn: updatedCustomer.updatedOn,
+      };
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      return resp;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      const resp = new Response();
+      resp.success = false;
+      resp.message = 'Failed to update customer profile: ' + error.message;
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 Bad Request';
+      return resp;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
 }

@@ -11,12 +11,13 @@ import { CustomerAddresses } from 'src/Models/customer_addresses.entity';
 import { parcel_details } from 'src/Models/parcel_detail.entity';
 import { Rating } from 'src/Models/ratings.entity';
 import { Rider } from 'src/Models/rider.entity';
+import { UploadPictureService } from 'src/upload-pictures/upload_picture/upload_picture.service';
  
 @Module({
-            imports: [TypeOrmModule.forFeature([Rating,Customer,shipment_request,Shipment,courier_company,shipping_detail, CustomerAddresses,parcel_details,Rider])],
+            imports: [TypeOrmModule.forFeature([Rating,Customer,shipment_request,Shipment,courier_company,shipping_detail, CustomerAddresses,parcel_details,Rider,UploadPictureService, ])],
 
   controllers: [CustomerUserController],
-  providers: [CustomerUserService],
+  providers: [CustomerUserService ],
   exports:[CustomerUserService]
 })
 export class CustomerUserModule {}

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Inject, Post, UseGuards,Request, Req, ValidationPipe, Param, BadRequestException } from '@nestjs/common';
+import { Body, Controller, HttpCode, Inject, Post, UseGuards,Request, Req, ValidationPipe, Param, BadRequestException, UseInterceptors, UploadedFiles, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 import { CustomerUserService } from './customer_user.service';
 import { customer_signup_dto } from '../ViewModel/customer_signup_dto';
@@ -10,6 +10,10 @@ import { GetAllShipmentsCustomerDto } from 'src/ViewModel/get_all_shipment_custo
 import { GetAddressesDto } from 'src/ViewModel/get-addresses.dto';
 import { CreateFullShipmentDTO } from 'src/ViewModel/CreateShipmentRequestDto';
 import { CreateRatingDto } from 'src/ViewModel/CreateRatingDto';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { multerOptions } from 'src/config/multer.config';
+import { PaymentDTO } from 'src/ViewModel/PaymentDto';
+import { UpdateCustomerProfileDto } from 'src/ViewModel/UpdateCustomerProfileDto';
  
 // @UseGuards(JwtAuthGuard)
 
@@ -38,12 +42,25 @@ constructor(private readonly customerUserService: CustomerUserService) {}
 //     return this.customerUserService.AddParcelDetails(body.customerId, id, body);
 //   }
 
-@UseGuards(JwtAuthGuard)
- @Post('create-full-shipment')
-  @HttpCode(200)
-  async createFullShipment(@Body(ValidationPipe) body: CreateFullShipmentDTO): Promise<Response> {
-    return this.customerUserService.createFullShipment(body);
+// @UseGuards(JwtAuthGuard)
+//  @Post('create-full-shipment')
+//   @HttpCode(200)
+//   async createFullShipment(@Body(ValidationPipe) body: CreateFullShipmentDTO): Promise<Response> {
+//     return this.customerUserService.createFullShipment(body);
+//   }
+
+//updated one
+
+@Post('create-full-shipment')
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 10 }], multerOptions))
+  async createFullShipment(
+    @Body() body: CreateFullShipmentDTO,
+    @UploadedFiles() files: { files?: Express.Multer.File[] },
+  ): Promise<Response> {
+    return this.customerUserService.createFullShipment(body, files.files || [], body.customerId);
   }
+
+
 
 @UseGuards(JwtAuthGuard)
 @Post('get-courier-options')
@@ -114,5 +131,36 @@ async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
   async createRating(@Body() createRatingDto: CreateRatingDto ): Promise<Response> {
  
     return this.customerUserService.createRating(createRatingDto );
+  }
+
+
+@Post('make-payment')
+  async makePayment(@Body() paymentDTO: PaymentDTO, @Query('shipmentId') shipmentId: number): Promise<any> {
+    try {
+      const paymentResult = await this.customerUserService.processPayment(shipmentId, paymentDTO);
+      return {
+        success: true,
+        message: 'Payment processed successfully',
+        data: paymentResult,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Failed to process payment',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+@Post('update-profile')
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 1 }])) // Limit to 1 file
+  @HttpCode(200)
+  async updateCustomerProfile(
+    @Body() data: UpdateCustomerProfileDto,
+    @UploadedFiles() files: { files?: Express.Multer.File[] },
+  ): Promise<Response> {
+    data.files = files.files || [];
+    return this.customerUserService.updateCustomerProfile(data, data.customerId.toString()); // Pass customerId as string
   }
 }

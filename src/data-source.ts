@@ -20,6 +20,7 @@ import { shipment_jobs } from './Models/shipment_jobs.entity';
 import { earning } from './Models/earnings.entity';
 import { CustomerAddresses } from './Models/customer_addresses.entity';
 import { parcel_details } from './Models/parcel_detail.entity';
+import { PaymentTransaction } from './Models/payment_transactions.entity';
   
   
 config(); // load .env
@@ -50,7 +51,8 @@ company_commission_rate,
 shipment_jobs,
 earning,
 CustomerAddresses,
-parcel_details
+parcel_details,
+PaymentTransaction
 
 
 

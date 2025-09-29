@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { IsArray, IsEnum, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested } from "class-validator";
 
 export class ParcelDetailDto {
@@ -28,22 +28,25 @@ export class ParcelDetailDto {
   @IsEnum(['small', 'medium', 'large', 'custom'])
   package_size: 'small' | 'medium' | 'large' | 'custom';
 
+  @IsOptional()
   @IsNumber()
   weight: number;
 
+  @IsOptional()
   @IsNumber()
   length: number;
 
+  @IsOptional()
   @IsNumber()
   height: number;
 
   @IsOptional()
+  @IsOptional()
   @IsNumber()
   width?: number;
 
+@IsArray()
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
   parcel_photos?: string[];
 
   @IsOptional()
@@ -92,8 +95,9 @@ export class ParcelDetailDto {
 // }
 
 export class CreateFullShipmentDTO {
-  @IsNumber()
-  customerId: number;
+@IsString()
+  @ValidateIf((o) => /^\d+$/.test(o.customerId)) // Ensures it's a numeric string
+  customerId: string;
 
   @IsString()
   pickup_location: string;
@@ -105,15 +109,26 @@ export class CreateFullShipmentDTO {
   @IsString()
   request_date?: string;
 
-  @IsArray()
-  @IsString({ each: true })
-  @ValidateIf(o => o.parcel_type === 'regular' && o.dropoff_locations?.length === 1)
-  @ValidateIf(o => o.parcel_type === 'bulk' && o.dropoff_locations?.length >= 2)
-  @Type(() => String)
-  dropoff_locations: string[];
+    @IsOptional()
+  @IsString()
+  payment_status?: string;
 
-  @IsArray()
+  // @IsArray()
+  // @IsString({ each: true })
+  // @ValidateIf(o => o.parcel_type === 'regular' && o.dropoff_locations?.length === 1)
+  // @ValidateIf(o => o.parcel_type === 'bulk' && o.dropoff_locations?.length >= 2)
+  // @Type(() => String)
+  // dropoff_locations: string[];
+
+   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ParcelDetailDto)
+  @Transform(({ value }) => {
+    try {
+      return typeof value === 'string' ? JSON.parse(value) : value;
+    } catch {
+      return [];
+    }
+  })
   parcels: ParcelDetailDto[];
 }
