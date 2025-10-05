@@ -14,6 +14,7 @@ export class VendorOperationDTO {
   registeration_status?: string;
   registeration_date?: string;
   establishment_card_expiry_date:string; 
+  company_email_address:string;
   created_by?: string;
   created_on?: Date;
   updated_by?: string;

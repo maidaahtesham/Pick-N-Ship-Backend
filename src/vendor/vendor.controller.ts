@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { VendorService } from './vendor.service';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 import { courier_company } from '../Models/courier_company.entity';
@@ -12,6 +12,8 @@ import { GetAllActiveShipmentsDto, GetAllShipmentsDto } from 'src/ViewModel/get_
 import { GetShipmentDetailsDto } from 'src/ViewModel/GetShipmentDetailsDto.dto';
 import { VendorOperationDTO } from 'src/ViewModel/VendorOperationDTO';
 import { profile_status_update_dto } from 'src/ViewModel/profile_status_update_dto';
+import { GetAllShipmentsVendorDto } from 'src/ViewModel/get_all_shipment_customer_dto';
+import { AcceptShipmentDto } from 'src/ViewModel/accept-shipmentDto';
 
 
 @Controller('api/vendor')
@@ -83,9 +85,15 @@ async addShippingDetails(@Body() data: shipping_detail_dto): Promise<Response> {
 
     return result;
   }
+  // @UseGuards(JwtAuthGuard)
+  // @Post('get-all-shipments')
+  // async getAllShipments(@Body() getAllShipmentsDto: GetAllShipmentsDto) {
+  //   return this.vendorService.getAllShipments(getAllShipmentsDto);
+  // }
+
   @UseGuards(JwtAuthGuard)
   @Post('get-all-shipments')
-  async getAllShipments(@Body() getAllShipmentsDto: GetAllShipmentsDto) {
+  async getAllShipments(@Body() getAllShipmentsDto: GetAllShipmentsVendorDto) {
     return this.vendorService.getAllShipments(getAllShipmentsDto);
   }
 
@@ -112,6 +120,20 @@ async getAllRiders(@Body() body: any) {
   );
 }
 
+@UseGuards(JwtAuthGuard)
+@Post('get-list-of-all-available-riders')
+async getAllAvailableRiders(@Body() body: any) {
+  const { page, perPage, search, sortBy, sortOrder, companyId } = body;
+  
+  return this.vendorService.getAllAvailableRiders(
+    page,
+    perPage,
+    sortBy,
+    sortOrder,
+    search,
+    companyId,
+  );
+}
 
 @UseGuards(JwtAuthGuard)
 @Post('shipment/cod')
@@ -163,6 +185,31 @@ async getShipmentDetails(@Body() getShipmentDetailsDto: GetShipmentDetailsDto) {
 //   @Body() data:profile_status_update_dto): Promise<Response> {
 //   return this.vendorService.updateProfileStatus(data);
 // }
+
+@Post(':shipmentId/accept')
+  @HttpCode(200)
+  async acceptShipment(
+    @Param('shipmentId') shipmentId: number,
+    @Body() acceptShipmentDto: AcceptShipmentDto,
+  ): Promise<Response> {
+    return this.vendorService.acceptShipment(shipmentId, acceptShipmentDto);
+  }
+
+
+@UseGuards(JwtAuthGuard)
+@Post('assign-job')
+async assignJobToRider(
+  @Body() body: { 
+    shipmentId: number; 
+    riderId?: number; 
+    companyId?: number; 
+    autoAssign?: boolean; 
+    pickup_time?: Date;
+  }
+) {
+  const { shipmentId, riderId, companyId, autoAssign, pickup_time } = body;
+  return this.vendorService.assignRiderToJob(shipmentId, riderId, companyId, autoAssign, pickup_time);
+}
 
 
 

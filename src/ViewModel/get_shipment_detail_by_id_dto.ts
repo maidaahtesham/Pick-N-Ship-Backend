@@ -32,12 +32,15 @@ export interface  GetShipmentDetailsByIdDto{
     codCollected: { status: string; time: string };
   };
   vehicleType: string;
+  
   paymentDetails: {
-    standardDeliveryFees: number;
-    subtotal: number;
-    platformFees: number;
-    vat: number;
-    total: number;
-  };
+  standardDeliveryFees: number;
+  // subtotal: number;
+  platformFee: number;
+  vat: number;
+  pnsCommission: number;
+  total: number;
+};
+
   codMarkedAsReceivedByAdmin: { status: string; time: string };
 }

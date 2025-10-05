@@ -6,4 +6,8 @@ export class PaymentDTO {
   expiryDate?: string; // Optional
   cvv?: string; // Optional
   customerId: number; // To track who made the payment
+ 
+  companyId: number; // Added for courier company
+
+ 
 }

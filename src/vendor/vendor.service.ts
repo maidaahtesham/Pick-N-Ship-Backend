@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { company_document } from '../Models/company_document.entity';
@@ -23,6 +23,8 @@ import { GetShipmentDetailsByIdDto } from 'src/ViewModel/get_shipment_detail_by_
 import { company_çonveyance_details } from 'src/Models/company_conveyance_details.entity';
 import { company_çonveyance_pricing_details } from 'src/Models/company_çonveyance_pricing_details.entity';
 import { profile_status_update_dto } from 'src/ViewModel/profile_status_update_dto';
+import { GetAllShipmentsCustomerDto, GetAllShipmentsVendorDto } from 'src/ViewModel/get_all_shipment_customer_dto';
+import { AcceptShipmentDto } from 'src/ViewModel/accept-shipmentDto';
 
 @Injectable()
 export class VendorService {
@@ -151,7 +153,7 @@ export class VendorService {
         pns_account_full_name: data.pns_account_full_name,
         updatedBy: data.updated_by,
         updatedOn: updatedOn,
-        status: data.status,
+        status: true,
       });
       await this.courierCompanyRepository.save(company);
       resp.message = 'Vendor details updated successfully';
@@ -169,7 +171,7 @@ export class VendorService {
         createdOn: createdOn,
         updatedBy: data.updated_by,
         updatedOn: updatedOn,
-        status: data.status,
+        status: true,
       });
       company = await this.courierCompanyRepository.save(newCompany);
       resp.message = 'Vendor details inserted successfully';
@@ -246,7 +248,7 @@ async addShippingDetails(data: shipping_detail_dto): Promise<Response> {
       });
 
       if (existingConveyance) {
-        // 🚫 skip insert, return already exists
+   
         resp.success = false;
         resp.message = `Conveyance '${conveyance.type}' already exists for this company`;
         resp.httpResponseCode = 400;
@@ -293,7 +295,10 @@ async addShippingDetails(data: shipping_detail_dto): Promise<Response> {
         pricing: pricingEntities,
       });
     }
-
+ await this.courierCompanyRepository.update(
+      { company_id: data.company_id },
+      { is_profile_complete: true }
+    );
     resp.success = true;
     resp.message = 'Shipping details inserted successfully';
     resp.result = savedConveyances;
@@ -415,20 +420,80 @@ async getAllJobsByCompany({ companyId, page, limit, status, search }) {
         };
     }
 }
-  async getAllShipments({
+  // async getAllShipments({
+  //   company_id,
+  //   page = 1,
+  //   limit = 10,
+  //   status,
+  //   search,
+  // }: GetAllShipmentsDto) {
+  //   try {
+  //      const query = this.shipmentRepository
+  //       .createQueryBuilder('shipment')
+  //        .leftJoinAndSelect('shipment.customer', 'customer')
+  //        .leftJoinAndSelect('shipment.rider', 'rider')
+  //       .leftJoinAndSelect('shipment.courierCompany', 'company')
+  //        .where('shipment.company_id = :companyId', { companyId: company_id });
+
+  //      if (status) {
+  //       query.andWhere('shipment.job_status = :status', { status });
+  //     }
+
+  //      if (search) {
+  //       query.andWhere(
+  //         `(shipment.tracking_number ILIKE :search OR
+  //           shipment.sender_name ILIKE :search OR
+  //           shipment.receiver_name ILIKE :search OR
+  //           rider.rider_name ILIKE :search)`,
+  //         { search: `%${search}%` },
+  //       );
+  //     }
+
+  //      query.orderBy('shipment.createdOn', 'DESC');
+
+  //      query.skip((page - 1) * limit).take(limit);
+
+  //      const [data, total] = await query.getManyAndCount();
+
+  //     return {
+  //       success: true,
+  //       message: 'Shipments fetched successfully',
+  //       data: {
+  //         shipments: data,
+  //         pagination: {
+  //           total,
+  //           currentPage: page,
+  //           totalPages: Math.ceil(total / limit),
+  //           limit,
+  //         },
+  //       },
+  //     };
+  //   } catch (error) {
+  //     console.error('Error fetching customer shipments:', error);
+  //     return {
+  //       success: false,
+  //       message: 'Failed to fetch shipments',
+  //       error: error.message,
+  //     };
+  //   }
+
+  // }
+
+async getAllShipments({
     company_id,
     page = 1,
     limit = 10,
     status,
     search,
-  }: GetAllShipmentsDto) {
+  }: GetAllShipmentsVendorDto) {
     try {
        const query = this.shipmentRepository
         .createQueryBuilder('shipment')
          .leftJoinAndSelect('shipment.customer', 'customer')
+         .leftJoinAndSelect('shipment.parcels','parcels')
          .leftJoinAndSelect('shipment.rider', 'rider')
         .leftJoinAndSelect('shipment.courierCompany', 'company')
-         .where('shipment.company_id = :companyId', { companyId: company_id });
+         .where('shipment.company_id = :companyId', { companyId: company_id }); 
 
        if (status) {
         query.andWhere('shipment.job_status = :status', { status });
@@ -472,9 +537,7 @@ async getAllJobsByCompany({ companyId, page, limit, status, search }) {
       };
     }
 
-  }
-
-
+  } 
  async getAllActiveShipments({
   company_id,
   page = 1,
@@ -546,10 +609,10 @@ async getAllRiders(
   sortOrder: 'ASC' | 'DESC' = 'ASC',
   search: string = '',
   companyId: number,
+  status?:boolean,
 ) {
   const query = this.riderRepository.createQueryBuilder('rider');
-
-  // Handle search functionality
+   // Handle search functionality
   if (search) {
     query.where('LOWER(rider.rider_name) LIKE LOWER(:search)', { search: `%${search}%` })
          .orWhere('LOWER(rider.email) LIKE LOWER(:search)', { search: `%${search}%` })
@@ -558,10 +621,12 @@ async getAllRiders(
   }
 
   // Apply companyId filter
-  if (companyId) {
+  if (companyId ) {
     query.andWhere('rider.company_id = :companyId', { companyId });
   }
-
+ if (status === true) {
+    query.andWhere('rider.is_active = :status', { status: true });
+  }
   // Apply sorting
   query.orderBy(`rider.${sortBy}`, sortOrder);
 
@@ -572,6 +637,80 @@ async getAllRiders(
 
   return { data, total };
 }
+
+
+async getAllAvailableRiders(
+  page: number = 1,
+  limit: number = 10,
+  sortBy: string = 'id',
+  sortOrder: 'ASC' | 'DESC' = 'ASC',
+  search: string = '',
+  companyId?: number,
+  status?: boolean,
+) {
+  try {
+    const query = this.riderRepository.createQueryBuilder('rider');
+
+ 
+    if (search) {
+      query.where('LOWER(rider.rider_name) LIKE LOWER(:search)', { search: `%${search}%` })
+           .orWhere('LOWER(rider.email) LIKE LOWER(:search)', { search: `%${search}%` })
+           .orWhere('LOWER(rider.licence_number) LIKE LOWER(:search)', { search: `%${search}%` })
+           .orWhere('LOWER(rider.vehicle_type) LIKE LOWER(:search)', { search: `%${search}%` });
+    }
+
+ 
+    if (companyId) {
+      query.andWhere('rider.company_id = :companyId', { companyId });
+    }
+
+  
+    if (status === true) {
+      query.andWhere('rider.is_active = :status', { status: true });
+    }
+
+   
+    query.andWhere('rider.profile_status = :profileStatus', { profileStatus: 'active' })
+         .andWhere('rider.is_available = :isAvailable', { isAvailable: true })
+         .andWhere('rider.is_job_assigned = :isJobAssigned', { isJobAssigned: false });
+
+ 
+    query.orderBy(`rider.${sortBy}`, sortOrder);
+
+ 
+    query.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await query.getManyAndCount();
+
+    return {
+      success: true,
+      message: 'Riders fetched successfully',
+      data: {
+        riders: data,
+        pagination: {
+          total,
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          limit,
+        },
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching riders:', error);
+    return {
+      success: false,
+      message: 'Failed to fetch riders',
+      error: error.message,
+    };
+  }
+}
+
+
+
+
+
+
+
 
 
 async getShipmentCodDetails(
@@ -652,17 +791,17 @@ async markShipmentAsReceived(shipmentId: number): Promise<Response> {
       .where('shipment.id = :shipmentId', { shipmentId })
       .getOne();
 
-    // if (!shipment || !shipment.cod_payment) {
-    //   throw new NotFoundException(`Shipment with id ${shipmentId} or its COD payment not found`);
-    // }
+    if (!shipment || !shipment.cod_payment) {
+      throw new NotFoundException(`Shipment with id ${shipmentId} or its COD payment not found`);
+    }
 
-    // // const codPayment = shipment.cod_payment;
+    const codPayment = shipment.cod_payment;
 
-    // // Update status to "received"
-    // codPayment.is_paid_to_company = true;
-    // codPayment.updatedOn = new Date();
+    // Update status to "received"
+    codPayment.is_paid_to_company = true;
+    codPayment.updatedOn = new Date();
 
-    // await this.codPaymentRepository.save(codPayment);
+    await this.codPaymentRepository.save(codPayment);
 
     resp.success = true;
     resp.httpResponseCode = 200;
@@ -751,6 +890,7 @@ async addVendorCompleteDetails(data: VendorOperationDTO): Promise<Response> {
         company_name: data.company_name,
         logo: data.logo,
         username: data.username,
+        company_email_address:data.company_email_address,
         city: data.city,
         company_address: data.company_address,
         company_phone_number: data.company_phone_number,
@@ -769,6 +909,7 @@ async addVendorCompleteDetails(data: VendorOperationDTO): Promise<Response> {
         company_name: data.company_name,
         logo: data.logo,
         username: data.username,
+        company_email_address:data.company_email_address,
         city: data.city,
         company_address: data.company_address,
         company_phone_number: data.company_phone_number,
@@ -942,9 +1083,9 @@ async getShipmentDetailsById(shipmentId: number) {
         'cod_payment',
         'parcels',
         'courierCompany',
-        // 'courierCompany.shippingDetails',
+        'courierCompany.company_conveyance_details',
+        'courierCompany.company_conveyance_details.pricing',
         'courierCompany.commissionRates',
-        
       ],
     });
 
@@ -957,116 +1098,144 @@ async getShipmentDetailsById(shipmentId: number) {
     const parcels = shipment.parcels || [];
 
     // ---------------------------
-    // Dynamic Delivery Fees Logic
+    // Payment Details Calculation
     // ---------------------------
- // Dynamic Delivery Fees Logic
-let paymentDetails = {
-  standardDeliveryFees: 0,
-  subtotal: 0,
-  platformFees: 0,
-  vat: 0,
-  pnsCommission: 0,
-  total: 0,
-};
+    let paymentDetails = {
+      standardDeliveryFees: 0,
+      platformFee: 0,
+      pnsCommission: 0,
+      vat: 0,
+      total: 0,
+    };
 
-if (company && rider && parcels.length>0) {
-  const vehicleType = rider.vehicle_type.toLowerCase();
-      const packageSize = parcels[0].package_size?.toLowerCase();
+    if (company && company.company_conveyance_details?.length && parcels.length > 0) {
+      const packageSize = parcels[0]?.package_size;
+      const vehicleType = rider?.vehicle_type || 'bike'; // default
 
-  const conveyanceDetail = await this.companyConveyanceDetailsRepository
-    .createQueryBuilder('conveyance')
-    .leftJoinAndSelect('conveyance.pricing', 'pricing')
-    .where('conveyance.company_id = :companyId', { companyId: company.company_id })
-    .andWhere('conveyance.conveyance_types = :vehicleType', { vehicleType })
-    .getOne();
+      const conveyance = company.company_conveyance_details.find(
+        c => c.conveyance_types.toLowerCase() === vehicleType.toLowerCase()
+      );
 
-  if (conveyanceDetail) {
-    const pricing = conveyanceDetail.pricing.find(p => p.size === packageSize);
-
-    if (pricing) {
-      const baseFare = pricing.baseFare || 0;
-      const distanceFare = (rider.distance || 0) * (pricing.pricePerKm || 0);
-
-      const standardDeliveryFees = baseFare + distanceFare;
-
-      // Commission calculation as percentage (for PNS info only)
-      const commissionRate = parseFloat(company.commissionRates?.[0]?.commission_rate || '0'); // e.g., 10
-      const pnsCommission = standardDeliveryFees * (commissionRate / 100);
-
-      const subtotal = standardDeliveryFees;
-      const platformFees = 1; // example platform fee
-      const vat = Math.ceil(subtotal * 0.06); // 6% VAT
-      const total = subtotal + platformFees + vat; // **exclude commission**
-
-      paymentDetails = {
-        standardDeliveryFees,
-        subtotal,
-        platformFees,
-        vat,
-        pnsCommission,
-        total,
-      };
+      if (conveyance && conveyance.pricing) {
+        try {
+          paymentDetails = this.calculatePricing(conveyance.pricing, packageSize);
+        }  catch (error) {
+    const resp = new Response();
+    resp.success = false;
+    resp.message = 'pricing not found: ' + error.message;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 Bad Request';
+    return resp;
+  }
+      }
     }
+
+    // Fetch company documents
+    const companyDocuments = await this.companyDocumentRepository.find({
+      where: { company_id: company?.company_id },
+    });
+
+ 
+    return {
+      result: {
+        shipment_id: shipment.id,
+        tracking_number: shipment.tracking_number || '',
+        pickup_location: shipment.pickup_location || '',
+        parcel_type: shipment.parcel_type || '',
+        parcels: parcels.map(p => ({
+          parcel_id: p.parcel_id,
+          dropoff_location: p.dropoff_location,
+          size: p.package_size,
+          length: p.length,
+          width: p.width,
+          height: p.height,
+          weight: p.weight,
+          description: p.description || '',
+          sender_name: p.sender_name || '',
+          sender_phone: p.sender_phone || '',
+          receiver_name: p.receiver_name || '',
+          receiver_phone: p.receiver_phone || '',
+          parcel_photos: p.parcel_photos || [],
+        })),
+        total_cod_amount: codPayment?.cod_amount ?? 0,
+         createdOn: shipment.createdOn || null,
+        updatedOn: shipment.updatedOn || null,
+        shipment_status: shipment.shipment_status || '',
+        shipment_type: shipment.payment_mode || '',
+        customer: customer
+          ? {
+              id: customer.id,
+              name: `${customer.firstname} ${customer.lastname}`,
+              phone_number: customer.phone_number,
+            }
+          : null,
+        rider: rider
+          ? {
+              id: rider.id,
+              name: rider.rider_name,
+              vehicle_type: rider.vehicle_type,
+            }
+          : null,
+        companyDetails: company
+          ? {
+              company_id: company.company_id,
+              company_name: company.company_name,
+              documents: companyDocuments.map(doc => ({
+                establishment_card_document: [
+                  {
+                    side_front: 'front',
+                    file_front: doc.establishment_card_front,
+                    side_back: 'back',
+                    file_back: doc.establishment_card_back,
+                  },
+                ],
+                establishment_card_expiry_date: doc.trade_license_expiry_date,
+              })),
+            }
+          : null,
+        paymentDetails,
+      },
+      httpResponseCode: 200,
+      customResponseCode: '200 OK',
+      message: 'Shipment details fetched successfully',
+      success: true,
+    };
+  } catch (error) {
+    return {
+      result: null,
+      httpResponseCode: 500,
+      customResponseCode: '500 Internal Server Error',
+      message: `Error fetching shipment details: ${error.message}`,
+      success: false,
+    };
   }
 }
 
-  const companyDocuments = await this.companyDocumentRepository.find({
-      where: { company_id: company?.company_id },
-    });
-  
-    const shipmentDetails: GetShipmentDetailsByIdDto = {
-      shipmentId: shipment.tracking_number || '',
-      date: shipment.createdOn?.toISOString().split('T')[0] || '',
-      parcelType: shipment.parcel_type || '',
-       parcelSize: shipment.parcels?.[0]?.package_size || '',         
-      parcelWeight: '', // compute if needed
-      parameters: `${shipment.parcels?.[0]?.length || ''}x${shipment.parcels?.[0]?.width || ''}x${shipment.parcels?.[0]?.height || ''}`, 
-      amount: codPayment?.cod_amount?.toString() || '',
-       shipmentStatus: shipment.shipment_status || '', 
-      shipmentType: shipment.payment_mode || '',
-      customerName: customer ? `${customer.firstname} ${customer.lastname}` : '',
-      customerNumber: customer?.phone_number || '',
-      senderName: parcels[0]?.sender_name || '',
-      senderNumber: parcels[0]?.sender_phone || '',
-      receiverName: parcels[0]?.receiver_name || '',
-      receiverPhoneNumber: parcels[0]?.receiver_phone || '',
-      assignedRider: rider?.rider_name || '',
-      pickUpTime: shipment.pickup_time?.toLocaleTimeString() || '',
-       deliveredTime: shipment.updatedOn?.toLocaleTimeString() || '',
-       isCodReceived: codPayment?.payment_status === 'paid',
-        pickupLocation: shipment.pickup_location || '',
-        dropOffLocation: shipment.parcels?.[0]?.dropoff_location || '',
-        parcelDetailDescription: shipment.parcels?.[0]?.description || '',
-      parcelPhotos: [], // Fetch if available
-      companyDetails: { company_name: company?.company_name || '' ,
-      documents: companyDocuments.map(doc=>({
-       establishment_card_document: [
-            { side_front: 'front', file_front: doc.establishment_card_front,
-              side_back:'back', file_back:doc.establishment_card_back
-            },  
-          ],
-          establishment_card_expiry_date: doc.trade_license_expiry_date,
-        })),
-      },
-      orderTracking: {
-        awaiting: { status: 'Completed', time: shipment.createdOn?.toLocaleString() || '' },
-        pickup: { status: 'Completed', time: shipment.pickup_time?.toLocaleString() || '' },
-        inTransit: { status: 'Completed', time: shipment.updatedOn?.toLocaleString() || '' },
-        outForDelivery: { status: 'Pending', time: '' },
-         delivered: { status: shipment.shipment_status === 'delivered' ? 'Completed' : 'Pending', time: '' },
-        codCollected: { status: codPayment?.payment_status || 'Pending', time: codPayment?.collectedOn?.toLocaleString() || '' },
-      },
-      vehicleType: rider?.vehicle_type || '',
-      paymentDetails,
-      codMarkedAsReceivedByAdmin: { status: 'Pending', time: '' }, // handle admin logic if needed
-    };
+private calculatePricing(pricing, packageSize: string) {
+  if (!['small', 'medium', 'large'].includes(packageSize)) {
+    throw new BadRequestException('Invalid package size');
+  }
 
+  const matchedPricing = pricing.find(p => p.size === packageSize && p.is_active === true);
+  if (!matchedPricing) {
+    throw new BadRequestException(`No active pricing found for package size: ${packageSize}`);
+  }
 
-      return shipmentDetails;
-    } catch (error) {
-      throw new Error(`Error fetching shipment details: ${error.message}`);
-    }
-}  
+  const baseFare = matchedPricing.baseFare;
+  const platformFee = baseFare * 0.1; // 10% platform fee
+  const pnsCommission = baseFare * 0.05; // 5% commission
+  const vat = (baseFare + platformFee + pnsCommission) * 0.05; // 5% VAT
+  const total = baseFare + platformFee + pnsCommission + vat;
+
+  return {
+    standardDeliveryFees: baseFare,
+    platformFee,
+    pnsCommission,
+    vat,
+    total,
+  };
+}
+
 // async updateProfileStatus(data:profile_status_update_dto): Promise<Response> {
 //   const resp = new Response();
 //   try {
@@ -1101,4 +1270,208 @@ if (company && rider && parcels.length>0) {
 
 
 // } 
+
+async acceptShipment(shipmentId: number, acceptShipmentDto: AcceptShipmentDto): Promise<Response> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const shipment = await queryRunner.manager.findOneOrFail(Shipment, {
+        where: { id: shipmentId },
+        relations: ['courierCompany', 'rider'],
+      });
+
+      if (shipment.shipment_status !== 'pending') {
+        throw new BadRequestException('Shipment is not in pending status');
+      }
+
+      // Link courier company and rider
+      const courierCompany = await queryRunner.manager.findOneOrFail(courier_company, {
+        where: { company_id: acceptShipmentDto.companyId },
+      });
+      const rider = await queryRunner.manager.findOneOrFail(Rider, {
+        where: { id: acceptShipmentDto.riderId },
+      });
+
+      shipment.courierCompany = courierCompany;
+      shipment.rider = rider;
+      shipment.shipment_status = 'accepted';
+      shipment.updatedOn = new Date();
+      shipment.updatedBy = acceptShipmentDto.acceptedBy;
+
+      await queryRunner.manager.save(shipment);
+
+      await queryRunner.commitTransaction();
+
+      const resp = new Response();
+      resp.success = true;
+      resp.message = 'Shipment accepted successfully';
+      resp.result = {
+        shipment_id: shipment.id,
+        tracking_number: shipment.tracking_number,
+        shipment_status: shipment.shipment_status,
+        courier_company_id: shipment.courierCompany.company_id,
+        rider_id: shipment.rider.id,
+        updatedOn: shipment.updatedOn,
+      };
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      return resp;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      const resp = new Response();
+      resp.success = false;
+      resp.message = 'Failed to accept shipment: ' + error.message;
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 Bad Request';
+      return resp;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+async assignRiderToJob(
+  shipmentId: number,
+  riderId?: number,
+  companyId?: number,
+  autoAssign: boolean = false,
+  pickup_time?: Date,
+): Promise<any> {
+  try {
+    // Fetch shipment
+    const shipment = await this.shipmentRepository.findOne({
+      where: { id: shipmentId },
+      relations: ['courierCompany', 'rider'],
+    });
+
+    if (!shipment) {
+      return {
+        httpResponseCode: 404,
+        customResponseCode: 'SHIPMENT_NOT_FOUND',
+        success: false,
+        message: `Shipment with ID ${shipmentId} not found`,
+        data: null,
+      };
+    }
+
+    // Determine companyId
+    const effectiveCompanyId = companyId || shipment.courierCompany?.company_id;
+
+    if (!effectiveCompanyId) {
+      return {
+        httpResponseCode: 400,
+        customResponseCode: 'COMPANY_ID_REQUIRED',
+        success: false,
+        message: 'Company ID is required for assignment',
+        data: null,
+      };
+    }
+
+    let rider: Rider | null = null;
+
+    if (autoAssign) {
+      // Auto assignment → pick first available rider
+      rider = await this.riderRepository.createQueryBuilder('rider')
+        .where('rider.company_id = :companyId', { companyId: effectiveCompanyId })
+        .andWhere('rider.profile_status = :status', { status: 'active' })
+        .andWhere('rider.is_available = true')
+        .andWhere('rider.is_job_assigned = false')   
+        .getOne();
+
+      if (!rider) {
+        return {
+          httpResponseCode: 404,
+          customResponseCode: 'NO_AVAILABLE_RIDER',
+          success: false,
+          message: `No available riders found for company ${effectiveCompanyId}`,
+          data: null,
+        };
+      }
+    } else {
+      // Manual assignment → vendor passes riderId
+      rider = await this.riderRepository.findOne({
+        where: { id: riderId, company: { company_id: effectiveCompanyId } },
+        relations: ['company'],
+      });
+
+      if (!rider) {
+        return {
+          httpResponseCode: 404,
+          customResponseCode: 'RIDER_NOT_FOUND',
+          success: false,
+          message: `Rider ${riderId} not found in company ${effectiveCompanyId}`,
+          data: null,
+        };
+      }
+
+      if (!rider.is_available || rider.is_job_assigned) {
+        return {
+          httpResponseCode: 400,
+          customResponseCode: 'RIDER_NOT_AVAILABLE',
+          success: false,
+          message: `Rider ${riderId} is not available for assignment`,
+          data: null,
+        };
+      }
+    }
+
+    // Assign rider to shipment
+    shipment.rider = rider;
+    shipment.shipment_status = 'accepted';
+    shipment.pickup_time = pickup_time ? new Date(pickup_time) : new Date();
+
+    rider.is_available = false;
+    rider.is_job_assigned = true;
+    rider.updatedOn = new Date();
+
+    // Transaction
+    const queryRunner = this.shipmentRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.manager.save(rider);
+      await queryRunner.manager.save(shipment);
+      await queryRunner.commitTransaction();
+
+      return {
+        httpResponseCode: 200,
+        customResponseCode: 'RIDER_ASSIGNED_SUCCESS',
+        success: true,
+        message: `Rider ${rider.rider_name} assigned successfully to shipment ${shipmentId}`,
+        data: {
+          shipmentId: shipment.id,
+          tracking_number: shipment.tracking_number,
+          pickup_time: shipment.pickup_time,
+          shipment_status: shipment.shipment_status,
+          rider: {
+            rider_id: rider.id,
+            rider_name: rider.rider_name,
+            vehicle_type: rider.vehicle_type,
+            email: rider.email,
+            phone_number: rider.phone_number,
+          },
+        },
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  } catch (error) {
+    console.error('Error assigning rider:', error);
+    return {
+      httpResponseCode: 500,
+      customResponseCode: 'ASSIGNMENT_FAILED',
+      success: false,
+      message: 'Something went wrong while assigning rider',
+      error: error.message,
+    };
+  }
+}
+
+
+
   }

@@ -6,7 +6,7 @@ import { super_admin } from '../Models/super_admin.entity';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 import { admin_user } from 'src/ViewModel/admin-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
- @UseGuards(JwtAuthGuard)
+
 @Controller('api/admin-portal')
 export class AdminPortalController {
   constructor(private readonly adminPortalService: AdminPortalService) {}
@@ -17,7 +17,7 @@ export class AdminPortalController {
     return this.adminPortalService.createSuperAdmin(data);
   } 
 
-
+ @UseGuards(JwtAuthGuard)
   @Post('update-password')
   @HttpCode(200)
   async updatePassword(@Body() data: { admin_id: number; newPassword: string }): Promise<any> {
@@ -25,6 +25,7 @@ export class AdminPortalController {
   }
 
 
+ @UseGuards(JwtAuthGuard)
  @Post('upload-profile-picture')
   @HttpCode(200)
   @UseInterceptors(FileInterceptor('profile_picture'))
@@ -33,6 +34,7 @@ export class AdminPortalController {
     return { path: filePath };
   }
 
+ @UseGuards(JwtAuthGuard)
 @Post('get-superadmin-profile')
   @HttpCode(200)
   async getProfile(@Body() body: admin_user, @Req() req: Request): Promise<Response> {
@@ -40,12 +42,14 @@ export class AdminPortalController {
     return this.adminPortalService.getProfile(admin_id); }
 
 
+ @UseGuards(JwtAuthGuard)
 @Post('get-all-companies-details')
 @HttpCode(200)
 async getallCompanies(@Body() body: any): Promise<Response> {
   return await this.adminPortalService.getallCompaniesdetails(body);
 }
 
+ @UseGuards(JwtAuthGuard)
   @Post('get-company')
 @HttpCode(200)
 async getCompany(@Body() body: { companyId: number }): Promise<Response> {
@@ -53,30 +57,35 @@ async getCompany(@Body() body: { companyId: number }): Promise<Response> {
 }
 
 
+ @UseGuards(JwtAuthGuard)
   @Post('edit-company')
   @HttpCode(200)
   async editCompany(@Body() data: edit_courier_company_dto): Promise<Response> {
     return await this.adminPortalService.editCompany(data);
   }
 
+ @UseGuards(JwtAuthGuard)
   @Delete('delete-company/:companyId')
   @HttpCode(200)
   async deleteCompany(@Param('companyId') companyId: number): Promise<Response> {
     return await this.adminPortalService.deleteCompany(companyId);
   }
 
+ @UseGuards(JwtAuthGuard)
 @Post('update-company-status')
 updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'active' | 'declined'; rejection_reason?: string ; acceptance_reason?: string}): Promise<Response> {
   return this.adminPortalService.updateCompanyStatus(data.company_id, data.status, data.rejection_reason, data.acceptance_reason);
 }
 
 
+ @UseGuards(JwtAuthGuard)
  @Post('get-commission')
  @HttpCode(200)
   async getCommission(@Body() body: { company_id: number; page?: number; limit?: number }): Promise<Response> {
     return this.adminPortalService.getCommission(body);
   }
 
+ @UseGuards(JwtAuthGuard)
  @Post('set-commission')
   
   @UsePipes(new ValidationPipe({ transform: true }))
@@ -87,6 +96,7 @@ updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'acti
  
 
 
+ @UseGuards(JwtAuthGuard)
 @Post('get-ratings')
 @HttpCode(200)
 async getRatings(@Body() body: { companyId: number; page?: number; limit?: number }, @Res() response): Promise<Response> {
@@ -95,12 +105,14 @@ async getRatings(@Body() body: { companyId: number; page?: number; limit?: numbe
   return response.status(result.httpResponseCode).json(result);
 }
  
+ @UseGuards(JwtAuthGuard)
   @Post('search-companies')
 searchCompanies(@Body() body: { company_name?: string; city?: string }) {
   return this.adminPortalService.searchCompanies(body.company_name, body.city);
 }
 
 
+ @UseGuards(JwtAuthGuard)
 @Post('get-all-jobs')
 getAllJobs(@Body() body: { page?: number; limit?: number; status?: string; search?: string }) {
   const { page = 1, limit = 10, status, search } = body;
@@ -109,12 +121,14 @@ getAllJobs(@Body() body: { page?: number; limit?: number; status?: string; searc
 
 
  
+ @UseGuards(JwtAuthGuard)
 @Post('shipment-overview')
 async getShipmentOverview(@Body('id') id: number) {
   return this.adminPortalService.getShipmentOverview(id);
 }
 
 
+ @UseGuards(JwtAuthGuard)
 @Post('cod')
 async getAll(@Body() body: { 
   page?: number; 
@@ -134,11 +148,14 @@ async getAll(@Body() body: {
 
 
   // Get total COD summary (Receivable, Pending, Retrieved)
+  
+ @UseGuards(JwtAuthGuard)
   @Get('summary')
   async getSummary() {
     return this.adminPortalService.getCodSummary();
   }
 
+ @UseGuards(JwtAuthGuard)
 @Post('cod/mark-paid')
 async markCodAsPaid(@Body() body: { codPaymentId: number }) {
   return this.adminPortalService.markCodAsPaid(body.codPaymentId);

@@ -15,7 +15,7 @@ export class company_çonveyance_pricing_details {
   @JoinColumn({ name: 'conveyance_id' })
   conveyance_detail: company_çonveyance_details;
 
-  @Column({ type: 'enum', enum: ['small', 'medium', 'large'] })
+  @Column({ type: 'enum', enum: ['small', 'medium', 'large' ,'custom'] })
   size: string;
 
   @Column('float')

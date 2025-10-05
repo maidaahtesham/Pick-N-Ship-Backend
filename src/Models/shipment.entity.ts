@@ -59,6 +59,11 @@ export class Shipment {
   payment_status: string; 
 
 
+
+@Column({ default:false, type: 'boolean'  })
+is_reviewed?: boolean;
+
+
   // @Column({
   //   type: 'enum',
   //   enum: ['small', 'medium', 'large', 'custom'], nullable:true

@@ -51,3 +51,28 @@ export class GetAllActiveShipmentsDto {
   @IsString()
   search?: string;
 }
+
+export class GetAllShipmentsVendorDto { 
+ 
+ @IsNumber()
+  @Type(() => Number)
+  company_id: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  page?: number = 1;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  limit?: number = 10;
+
+  @IsOptional()
+  @IsString()
+  status?: 'Pending' | 'Completed' | 'Cancelled';
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+}

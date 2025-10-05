@@ -379,74 +379,334 @@ private async uploadParcelPhotos(
   return urls;
 }
 
-async createFullShipment(data: CreateFullShipmentDTO, files: Express.Multer.File[], customerId: string): Promise<Response> {
+// async createFullShipmentUpdated(data: CreateFullShipmentDTO, files: Express.Multer.File[], customerId: string): Promise<Response> {
+//   const queryRunner = this.dataSource.createQueryRunner();
+//   await queryRunner.connect();
+//   await queryRunner.startTransaction();
+
+//   try {
+
+// const rawCustomerId = (data.customerId || "").toString().trim();
+// const cleanedCustomerId = rawCustomerId.replace(/['"]+/g, ""); // remove quotes
+// const numericCustomerId = parseInt(cleanedCustomerId, 10);
+
+// console.log({
+//   raw: data.customerId,
+//   afterTrim: rawCustomerId,
+//   afterClean: cleanedCustomerId,
+//   parsed: numericCustomerId,
+// });
+
+    
+//     const customer = await queryRunner.manager.findOne(Customer, {
+//       where: { id: numericCustomerId },
+//       relations: ['company'],
+//     });
+// if (!customer) {
+//       throw new BadRequestException(`Customer with ID ${numericCustomerId} not found`);
+//     }
+
+//     const requestDate = data.request_date ? new Date(data.request_date) : new Date();
+//     if (isNaN(requestDate.getTime())) {
+//       throw new BadRequestException('Invalid request_date provided');
+//     }
+
+//     // Create shipment
+//     const shipment = queryRunner.manager.create(Shipment, {
+//       pickup_location: data.pickup_location,
+//       parcel_type: data.parcel_type,
+//       shipment_status: 'pending',
+//       payment_mode: 'prepaid',
+//       payment_status: 'unpaid',
+//       shipment_created_on: new Date(),
+//       pickup_time: requestDate,
+//       customer: { id: numericCustomerId },
+//       createdOn: new Date(),
+//       updatedOn: new Date(),
+//       createdBy:  customerId ,
+//       updatedBy: customerId ,
+//       status: true,
+    
+//     });
+//     console.log(customerId)
+//     const savedShipment = await queryRunner.manager.save(shipment);
+
+//     let totalCodAmount = 0;
+//     const parcelEntities: parcel_details[] = [];
+//     let fileIndex = 0;
+//     const totalFiles = files.length;
+//     const filesPerParcel = Math.floor(totalFiles / data.parcels.length) || 1;
+
+//     for (const [index, p] of data.parcels.entries()) {
+//       const startIdx = fileIndex;
+//       const endIdx = Math.min(fileIndex + filesPerParcel, totalFiles);
+//       const parcelFiles = files.slice(startIdx, endIdx);
+//       fileIndex = endIdx;
+
+//       const parcel = queryRunner.manager.create(parcel_details, {
+//         shipments: savedShipment, // Set the relation to the saved Shipment entity
+//         dropoff_location: p.dropoff_location,
+//         description: p.description || '', // Handle undefined description
+//         sender_name: p.sender_name,
+//         sender_phone: p.sender_phone,
+//         receiver_name: p.receiver_name,
+//         receiver_phone: p.receiver_phone,
+//         package_size: p.package_size,
+//         weight: p.weight,
+//         length: p.length,
+//         height: p.height,
+//         width: p.width || undefined, // Handle optional width
+//         cod_amount: p.cod_amount || 0, // Handle optional cod_amount
+//         createdBy: customerId ,
+//         createdOn: new Date(),
+//         updatedOn: new Date(),
+//         updatedBy: customerId ,
+//         status: true,
+//       });
+
+//       const savedParcel = await queryRunner.manager.save(parcel);
+
+//       // if (parcelFiles.length > 0) {
+//       //   const photoUrls = await this.uploadParcelPhotos(savedParcel.parcel_id, parcelFiles, customerId, queryRunner);
+//       //   savedParcel.parcel_photos = photoUrls;
+//       // }
+//       parcel.parcel_photos=savedParcel.parcel_photos||[]
+//       totalCodAmount += (p.cod_amount || 0);
+//       parcelEntities.push(savedParcel);
+//     }
+
+//     const savedParcels = await queryRunner.manager.save(parcel_details, parcelEntities);
+//     const trackingNumber = `SHIP-${savedShipment.id}-${Date.now()}`;
+
+//     savedShipment.tracking_number = trackingNumber;
+//     await queryRunner.manager.save(shipment);
+
+//     await queryRunner.commitTransaction();
+
+//     const resp = new Response();
+//     resp.success = true;
+//     resp.message = 'Full shipment created successfully';
+//     resp.result = {
+//       shipment_id: savedShipment.id,
+//       tracking_number: savedShipment.tracking_number,
+//       pickup_location: savedShipment.pickup_location,
+//       parcel_type: savedShipment.parcel_type,
+//       parcels: savedParcels.map((parcel) => ({
+//         parcel_id: parcel.parcel_id,
+//         dropoff_location: parcel.dropoff_location,
+//         size: parcel.package_size,
+//         length: parcel.length,
+//         width: parcel.width,
+//         height: parcel.height,
+//         weight: parcel.weight,
+//         parcel_photos: parcel.parcel_photos || [],
+//       })),
+//       total_cod_amount: totalCodAmount,
+//       request_date: requestDate,
+//       createdOn: savedShipment.createdOn,
+//       updatedOn: savedShipment.updatedOn,
+//     };
+//     resp.httpResponseCode = 200;
+//     resp.customResponseCode = '200 OK';
+//     return resp;
+//   } catch (error) {
+//     await queryRunner.rollbackTransaction();
+//     const resp = new Response();
+//     resp.success = false;
+//     resp.message = 'Failed to create full shipment: ' + error.message;
+//     resp.httpResponseCode = 400;
+//     resp.customResponseCode = '400 Bad Request';
+//     return resp;
+//   } finally {
+//     await queryRunner.release();
+//   }
+// }
+async createFullShipmentUpdated(
+    data: CreateFullShipmentDTO 
+   
+  ): Promise<Response> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // ✅ Clean customerId
+      const numericCustomerId = parseInt(data.customerId.toString().trim(), 10);
+
+      const customer = await queryRunner.manager.findOne(Customer, {
+        where: { id: numericCustomerId },
+        relations: ['company'],
+      });
+
+      if (!customer) {
+        throw new BadRequestException(`Customer with ID ${numericCustomerId} not found`);
+      }
+
+      const requestDate = data.request_date ? new Date(data.request_date) : new Date();
+      if (isNaN(requestDate.getTime())) {
+        throw new BadRequestException('Invalid request_date provided');
+      }
+
+      // ✅ Create shipment
+      const shipment = queryRunner.manager.create(Shipment, {
+        pickup_location: data.pickup_location,
+        parcel_type: data.parcel_type,
+        shipment_status: 'pending',
+        payment_mode: 'prepaid',
+        payment_status: 'unpaid',
+        shipment_created_on: new Date(),
+        pickup_time: requestDate,
+        customer: { id: numericCustomerId },
+        createdOn: new Date(),
+        updatedOn: new Date(),
+        createdBy: data.customerId.toString(),
+        updatedBy: data.customerId.toString(),
+        status: true,
+      });
+
+      const savedShipment = await queryRunner.manager.save(shipment);
+
+      let totalCodAmount = 0;
+      const parcelEntities: parcel_details[] = [];
+
+      for (const p of data.parcels) {
+        const parcel = queryRunner.manager.create(parcel_details, {
+          shipments: savedShipment,
+          dropoff_location: p.dropoff_location,
+          description: p.description || '',
+          sender_name: p.sender_name,
+          sender_phone: p.sender_phone,
+          receiver_name: p.receiver_name,
+          receiver_phone: p.receiver_phone,
+          package_size: p.package_size,
+          weight: p.weight,
+          length: p.length,
+          height: p.height,
+          width: p.width || undefined,
+          cod_amount: p.cod_amount || 0,
+          parcel_photos: p.parcel_photos || [], // 👈 Directly save URLs
+          createdBy: data.customerId.toString(),
+          createdOn: new Date(),
+          updatedOn: new Date(),
+          updatedBy: data.customerId.toString(),
+          status: true,
+        });
+
+        const savedParcel = await queryRunner.manager.save(parcel);
+
+        totalCodAmount += p.cod_amount || 0;
+        parcelEntities.push(savedParcel);
+      }
+
+      const savedParcels = await queryRunner.manager.save(parcel_details, parcelEntities);
+
+      // ✅ Add tracking number
+      const trackingNumber = `SHIP-${savedShipment.id}-${Date.now()}`;
+      savedShipment.tracking_number = trackingNumber;
+      await queryRunner.manager.save(shipment);
+
+      await queryRunner.commitTransaction();
+
+      const resp = new Response();
+      resp.success = true;
+      resp.message = 'Full shipment created successfully';
+      resp.result = {
+        shipment_id: savedShipment.id,
+        tracking_number: savedShipment.tracking_number,
+        pickup_location: savedShipment.pickup_location,
+        parcel_type: savedShipment.parcel_type,
+        parcels: savedParcels.map((parcel) => ({
+          parcel_id: parcel.parcel_id,
+          dropoff_location: parcel.dropoff_location,
+          size: parcel.package_size,
+          length: parcel.length,
+          width: parcel.width,
+          height: parcel.height,
+          weight: parcel.weight,
+          parcel_photos: parcel.parcel_photos || [], // 👈 return URLs
+        })),
+         
+        total_cod_amount: totalCodAmount,
+        request_date: requestDate,
+        createdOn: savedShipment.createdOn,
+        updatedOn: savedShipment.updatedOn,
+      };
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      return resp;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      const resp = new Response();
+      resp.success = false;
+      resp.message = 'Failed to create full shipment: ' + error.message;
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 Bad Request';
+      return resp;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+async createFullShipment(
+  data: CreateFullShipmentDTO,
+  files: Express.Multer.File[],
+  customerId: string
+): Promise<Response> {
   const queryRunner = this.dataSource.createQueryRunner();
   await queryRunner.connect();
   await queryRunner.startTransaction();
 
   try {
+    // ✅ customerId sanitize + validate
+    const rawCustomerId = (data.customerId || "").toString().trim();
+    const cleanedCustomerId = rawCustomerId.replace(/['"]+/g, "");
+    const numericCustomerId = parseInt(cleanedCustomerId, 10);
 
-const rawCustomerId = (data.customerId || "").toString().trim();
-const cleanedCustomerId = rawCustomerId.replace(/['"]+/g, ""); // remove quotes
-const numericCustomerId = parseInt(cleanedCustomerId, 10);
+    if (isNaN(numericCustomerId)) {
+      throw new BadRequestException("Invalid customerId provided");
+    }
 
-console.log({
-  raw: data.customerId,
-  afterTrim: rawCustomerId,
-  afterClean: cleanedCustomerId,
-  parsed: numericCustomerId,
-});
-
-    
+    // ✅ Customer check
     const customer = await queryRunner.manager.findOne(Customer, {
       where: { id: numericCustomerId },
-      relations: ['company'],
+      relations: ["company"],
     });
-if (!customer) {
+    if (!customer) {
       throw new BadRequestException(`Customer with ID ${numericCustomerId} not found`);
     }
 
+    // ✅ Request date
     const requestDate = data.request_date ? new Date(data.request_date) : new Date();
     if (isNaN(requestDate.getTime())) {
-      throw new BadRequestException('Invalid request_date provided');
+      throw new BadRequestException("Invalid request_date provided");
     }
 
-    // Create shipment
+    // ✅ Shipment create
     const shipment = queryRunner.manager.create(Shipment, {
       pickup_location: data.pickup_location,
       parcel_type: data.parcel_type,
-      shipment_status: 'pending',
-      payment_mode: 'prepaid',
-      payment_status: 'unpaid',
+      shipment_status: "pending",
+      payment_mode: "prepaid",
+      payment_status: data.payment_status || "unpaid",
       shipment_created_on: new Date(),
       pickup_time: requestDate,
       customer: { id: numericCustomerId },
       createdOn: new Date(),
       updatedOn: new Date(),
-      createdBy:  customerId ,
-      updatedBy: customerId ,
+      createdBy: customerId,
+      updatedBy: customerId,
       status: true,
-    
     });
-    console.log(customerId)
     const savedShipment = await queryRunner.manager.save(shipment);
 
     let totalCodAmount = 0;
     const parcelEntities: parcel_details[] = [];
-    let fileIndex = 0;
-    const totalFiles = files.length;
-    const filesPerParcel = Math.floor(totalFiles / data.parcels.length) || 1;
 
+    // ✅ Har parcel ko uski files assign karna
     for (const [index, p] of data.parcels.entries()) {
-      const startIdx = fileIndex;
-      const endIdx = Math.min(fileIndex + filesPerParcel, totalFiles);
-      const parcelFiles = files.slice(startIdx, endIdx);
-      fileIndex = endIdx;
-
       const parcel = queryRunner.manager.create(parcel_details, {
-        shipments: savedShipment, // Set the relation to the saved Shipment entity
+        shipments: savedShipment,
         dropoff_location: p.dropoff_location,
-        description: p.description || '', // Handle undefined description
+        description: p.description || "",
         sender_name: p.sender_name,
         sender_phone: p.sender_phone,
         receiver_name: p.receiver_name,
@@ -455,43 +715,54 @@ if (!customer) {
         weight: p.weight,
         length: p.length,
         height: p.height,
-        width: p.width || undefined, // Handle optional width
-        cod_amount: p.cod_amount || 0, // Handle optional cod_amount
-        createdBy: customerId ,
+        width: p.width,
+        cod_amount: p.cod_amount || 0,
+        createdBy: customerId,
         createdOn: new Date(),
         updatedOn: new Date(),
-        updatedBy: customerId ,
+        updatedBy: customerId,
         status: true,
       });
 
       const savedParcel = await queryRunner.manager.save(parcel);
 
+      // ✅ Parcel ke photos find karo by originalname match
+      const parcelFiles = files.filter((f) =>
+        (p.parcel_photos || []).includes(f.originalname)
+      );
+
       if (parcelFiles.length > 0) {
-        const photoUrls = await this.uploadParcelPhotos(savedParcel.parcel_id, parcelFiles, customerId, queryRunner);
+        const photoUrls = await this.uploadParcelPhotos(
+          savedParcel.parcel_id,
+          parcelFiles,
+          customerId,
+          queryRunner
+        );
         savedParcel.parcel_photos = photoUrls;
+        await queryRunner.manager.save(savedParcel);
       }
 
-      totalCodAmount += (p.cod_amount || 0);
+      totalCodAmount += p.cod_amount || 0;
       parcelEntities.push(savedParcel);
     }
 
-    const savedParcels = await queryRunner.manager.save(parcel_details, parcelEntities);
+    // ✅ Tracking number assign
     const trackingNumber = `SHIP-${savedShipment.id}-${Date.now()}`;
-
     savedShipment.tracking_number = trackingNumber;
-    await queryRunner.manager.save(shipment);
+    await queryRunner.manager.save(savedShipment);
 
     await queryRunner.commitTransaction();
 
+    // ✅ Response
     const resp = new Response();
     resp.success = true;
-    resp.message = 'Full shipment created successfully';
+    resp.message = "Full shipment created successfully";
     resp.result = {
       shipment_id: savedShipment.id,
       tracking_number: savedShipment.tracking_number,
       pickup_location: savedShipment.pickup_location,
       parcel_type: savedShipment.parcel_type,
-      parcels: savedParcels.map((parcel) => ({
+      parcels: parcelEntities.map((parcel) => ({
         parcel_id: parcel.parcel_id,
         dropoff_location: parcel.dropoff_location,
         size: parcel.package_size,
@@ -507,20 +778,25 @@ if (!customer) {
       updatedOn: savedShipment.updatedOn,
     };
     resp.httpResponseCode = 200;
-    resp.customResponseCode = '200 OK';
+    resp.customResponseCode = "200 OK";
     return resp;
   } catch (error) {
     await queryRunner.rollbackTransaction();
     const resp = new Response();
     resp.success = false;
-    resp.message = 'Failed to create full shipment: ' + error.message;
+    resp.message = "Failed to create full shipment: " + error.message;
     resp.httpResponseCode = 400;
-    resp.customResponseCode = '400 Bad Request';
+    resp.customResponseCode = "400 Bad Request";
     return resp;
   } finally {
     await queryRunner.release();
   }
 }
+
+
+
+
+
 
 async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
   const queryRunner = this.dataSource.createQueryRunner();
@@ -534,7 +810,7 @@ async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
 
     const parcel = data.parcels[0];  
     const packageSize = parcel.package_size;
-    if (!['small', 'medium', 'large'].includes(packageSize)) {
+    if (!['small', 'medium', 'large','custom'].includes(packageSize)) {
       throw new BadRequestException('Invalid package size');
     }
 
@@ -545,6 +821,7 @@ async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
       .where('conveyance.conveyance_types = :type', { type: 'bike' })
       .andWhere('conveyance.is_active = :active', { active: true })
       .andWhere('company.status = :status', { status: true })
+      .andWhere('company.registeration_status=:registeration_status',{registeration_status:'Active'})
       .andWhere('pricing.is_active = :pricingActive', { pricingActive: true })
       .getMany();
 
@@ -939,6 +1216,7 @@ async addAddress(data: any): Promise<CustomerAddresses> {
       makani_number: data.makani_number,
       nearest_landmark: data.nearest_landmark,
       address_type: data.address_type,
+      area:data.area,
       is_default: data.is_default || false,
       createdBy: data.createdBy,
       updatedBy: data.updatedBy,
@@ -981,6 +1259,25 @@ async addAddress(data: any): Promise<CustomerAddresses> {
       };
     }
   }
+async getAddressDetail(data: { address_id: number; customer_id: number }) {
+  const address = await this.addressRepository.findOne({
+    where: {
+      id: data.address_id,
+      customer: { id: data.customer_id }
+    },
+    relations: ['customer'],
+  });
+
+  if (!address) throw new NotFoundException('Address not found');
+
+  return {
+    httpResponseCode: 200,
+    customResponseCode: 'ADDRESS_DETAIL_FETCHED',
+    success: true,
+    message: 'Address detail fetched successfully',
+    data: address,
+  };
+}
 
   async editAddress(customerId: number, addressId: number, data: any): Promise<CustomerAddresses> {
     const customer = await this.customerRepository.findOne({
@@ -1004,6 +1301,7 @@ async addAddress(data: any): Promise<CustomerAddresses> {
       makani_number: data.makani_number,
       nearest_landmark: data.nearest_landmark,
       address_type: data.address_type,
+      area:data.area,
       is_default: data.is_default || address.is_default,
       updatedBy: data.updatedBy,
       updatedOn: new Date(),
@@ -1073,7 +1371,10 @@ async createRating(createRatingDto: CreateRatingDto): Promise<Response> {
       });
 
       const savedRating = await this.ratingRepository.save(rating);
-
+  await this.shipmentRepository.update(
+      { id: shipment.id },
+      { is_reviewed: true }
+    );
       const resp = new Response();
       resp.success = true;
       resp.message = 'Rating submitted successfully';
@@ -1094,7 +1395,7 @@ async createRating(createRatingDto: CreateRatingDto): Promise<Response> {
 
 
 
-  async processPayment(shipmentId: number, paymentDTO: PaymentDTO): Promise<any> {
+  async   processPayment(shipmentId: number, paymentDTO: PaymentDTO): Promise<any> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -1102,13 +1403,10 @@ async createRating(createRatingDto: CreateRatingDto): Promise<Response> {
     try {
       const shipment = await queryRunner.manager.findOneOrFail(Shipment, {
         where: { id: shipmentId },
-        relations: ['parcels', 'courierCompany', 'codPayment'],
+        relations: ['parcels', 'courierCompany', 'cod_payment'],
       });
 
-      if (shipment.shipment_status !== 'accepted') {
-        throw new Error('Shipment must be accepted by courier before payment');
-      }
-
+     
       const totalAmount = this.calculateTotalAmount(shipment);
       const paymentBreakdown = {
         base_price: shipment.parcels.reduce((sum, parcel) => sum + (parcel.cod_amount || 0), 0),
@@ -1125,7 +1423,21 @@ async createRating(createRatingDto: CreateRatingDto): Promise<Response> {
       if (!paymentSuccess) {
         throw new Error('Payment gateway rejected the transaction');
       }
+    const courierCompany = await queryRunner.manager.findOneOrFail(courier_company, {
+      where: { company_id: paymentDTO.companyId },
+    });
+ 
 
+    shipment.courierCompany = courierCompany;
+  
+    shipment.shipment_status = 'pending';
+    shipment.payment_status = 'paid';
+    shipment.updatedOn = new Date();
+    shipment.updatedBy = paymentDTO.customerId.toString();
+
+
+
+    await queryRunner.manager.save(shipment);
       // Create payment transaction record
       const paymentTransaction = queryRunner.manager.create(PaymentTransaction, {
         shipment,
@@ -1161,6 +1473,8 @@ async createRating(createRatingDto: CreateRatingDto): Promise<Response> {
         shipmentId: shipment.id,
         tracking_number: shipment.tracking_number,
         payment_status: shipment.payment_status,
+        courier_company_id: shipment.courierCompany.company_id,
+ 
         payment_breakdown: paymentBreakdown,
         payment_method: paymentDTO.paymentMethod,
         transaction_id: paymentTransaction.transactionId,

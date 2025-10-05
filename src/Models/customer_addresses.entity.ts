@@ -13,11 +13,17 @@ export class CustomerAddresses {
   @Column({ length: 255 })
   street: string;
 
+   @Column({ length: 255, nullable: true })
+  area: string;
+
   @Column({ length: 50 })
   city: string;
 
   @Column({ length: 50, nullable: true })
   country: string;
+
+  @Column({nullable:true})
+  address:string
 
 
   @Column({ length: 255, nullable: true })

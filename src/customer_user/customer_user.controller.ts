@@ -51,14 +51,41 @@ constructor(private readonly customerUserService: CustomerUserService) {}
 
 //updated one
 
-@Post('create-full-shipment')
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 10 }], multerOptions))
-  async createFullShipment(
+// @Post('create-full-shipment-updated')
+//   @UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 10 }], multerOptions))
+//   async createFullShipmentupdated(
+//     @Body() body: CreateFullShipmentDTO,
+//     @UploadedFiles() files: { files?: Express.Multer.File[] },
+//   ): Promise<Response> {
+//     return this.customerUserService.createFullShipmentUpdated(body, files.files || [], body.customerId);
+//   }
+
+//Active
+@Post('create-full-shipment-updated')
+  async createFullShipmentupdated(
     @Body() body: CreateFullShipmentDTO,
-    @UploadedFiles() files: { files?: Express.Multer.File[] },
   ): Promise<Response> {
-    return this.customerUserService.createFullShipment(body, files.files || [], body.customerId);
+    return this.customerUserService.createFullShipmentUpdated(body );
   }
+ 
+ @Post('create-full-shipment')
+@UseInterceptors(
+  FileFieldsInterceptor(
+    [{ name: 'files', maxCount: 20 }], // max file count increase if needed
+    multerOptions
+  )
+)
+async createFullShipment(
+  @Body() body: CreateFullShipmentDTO,
+  @UploadedFiles() files: { files?: Express.Multer.File[] },
+): Promise<Response> {
+  // 👇 yahan ab JWT se nahi, frontend se bheje gaye customerId use hoga
+  return this.customerUserService.createFullShipment(
+    body,
+    files.files || [],
+    body.customerId
+  );
+}
 
 
 
@@ -101,11 +128,20 @@ async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
   async addAddress(@Body() body: any) {
     return this.customerUserService.addAddress(body);
   }
+
+
 @UseGuards(JwtAuthGuard)
   @Post('get-addresses')
   async getAddresses(@Body() getAddressesDto: GetAddressesDto) {
     return this.customerUserService.getAddresses(getAddressesDto);
   }
+
+@UseGuards(JwtAuthGuard)
+@Post('get-address-detail')
+async getAddressDetail(@Body() body: { address_id: number; customer_id: number }) {
+  return this.customerUserService.getAddressDetail(body);
+}
+
 
 @UseGuards(JwtAuthGuard)
 @Post('edit-address')
@@ -116,6 +152,7 @@ async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
     }
     return this.customerUserService.editAddress(customer_id, parseInt(address_id), body);
   }
+
 @UseGuards(JwtAuthGuard)
 @Post('delete-address')
   async deleteAddress(@Body() body: any) {
@@ -153,6 +190,8 @@ async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
       );
     }
   }
+
+
 @Post('update-profile')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'files', maxCount: 1 }])) // Limit to 1 file
   @HttpCode(200)
@@ -163,4 +202,10 @@ async createCustomerUser(@Body() data:customer_signup_dto): Promise<Response>{
     data.files = files.files || [];
     return this.customerUserService.updateCustomerProfile(data, data.customerId.toString()); // Pass customerId as string
   }
+
+
+
+ 
+
+
 }

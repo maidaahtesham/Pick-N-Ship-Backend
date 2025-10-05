@@ -257,6 +257,7 @@ async getallCompaniesdetails(body: any): Promise<Response> {
         'company.company_email_address AS email_address',
         'company.registeration_date AS submission_date',
         'company.registeration_status AS status',
+        'company.company_address AS address'
       ])
       .addSelect('AVG(rating.stars)', 'average_rating')
       .groupBy('company.company_id');

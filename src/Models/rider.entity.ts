@@ -29,11 +29,6 @@ export class Rider {
   @Column('float')
   distance: number;
 
-  @Column()
-  availability_status: string;
-
-  @Column()
-  assigned_jobs: number;
 
   @Column()
   rider_code: string;
@@ -53,7 +48,20 @@ export class Rider {
   @Column('text')
   documents: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
+  
+  @Column({default:true,nullable:true})
+  availability_status: boolean; 
+
+  @Column({default:false, nullable:true})
+ is_job_assigned:boolean;
+
+  @Column({default:true,nullable:true})
+  is_available:boolean;
+
+ @Column({default:'active', nullable:true})
+  profile_status:string //blocked,active
+
+@Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
 
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
@@ -66,7 +74,7 @@ updatedOn: Date;
   updatedBy: string;
 
   @Column({ type: 'boolean', default: null })
-  status: boolean;
+  status: boolean; 
   
   @OneToMany(() => Rating, (rating) => rating.rider)
     ratings: Rating[];
