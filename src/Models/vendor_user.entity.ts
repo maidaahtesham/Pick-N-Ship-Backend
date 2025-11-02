@@ -2,6 +2,8 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGene
 import { Rating } from "./ratings.entity";
 import { shipment_request } from "./shipment_request.entity";
 import { courier_company } from "./courier_company.entity";
+import { Role } from "./role.entity";
+import { RolePermission } from "./role-permission.entity";
 
 @Entity()
 export class  vendor_user{
@@ -48,4 +50,18 @@ status: boolean;
 @ManyToOne(() => courier_company, (company) => company.vendorUser, { nullable: true }) 
 @JoinColumn({ name: 'company_id' }) 
 company: courier_company;
+
+  @ManyToOne(() => Role, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "role_id" })
+  role: Role
+
+
+  @OneToMany(
+    () => RolePermission,
+    (rp) => rp.role,
+    { cascade: true },
+  )
+  role_permissions: RolePermission[]
+
+
 }

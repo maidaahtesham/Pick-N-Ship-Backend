@@ -14,9 +14,12 @@ import { Rating } from 'src/Models/ratings.entity';
 import { Customer } from 'src/Models/customer.entity';
 import { company_çonveyance_details } from 'src/Models/company_conveyance_details.entity';
 import { company_çonveyance_pricing_details } from 'src/Models/company_çonveyance_pricing_details.entity';
+import { Role } from 'src/Models/role.entity';
+import { RolePermission } from 'src/Models/role-permission.entity';
+import { Permission } from 'src/Models/permission.entity';
 
 @Module({
-      imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,vendor_user, company_document,shipping_detail,Rider,Rating,Customer,company_çonveyance_details,company_çonveyance_pricing_details])],
+      imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,vendor_user, company_document,shipping_detail,Rider,Rating,Customer,company_çonveyance_details,company_çonveyance_pricing_details,Role,RolePermission,Permission])],
   
   controllers: [VendorController],
   providers: [VendorService],

@@ -21,6 +21,9 @@ import { earning } from './Models/earnings.entity';
 import { CustomerAddresses } from './Models/customer_addresses.entity';
 import { parcel_details } from './Models/parcel_detail.entity';
 import { PaymentTransaction } from './Models/payment_transactions.entity';
+import { Role } from './Models/role.entity';
+import { RolePermission } from './Models/role-permission.entity';
+import { Permission } from './Models/permission.entity';
   
   
 config(); // load .env
@@ -52,13 +55,20 @@ shipment_jobs,
 earning,
 CustomerAddresses,
 parcel_details,
-PaymentTransaction
+PaymentTransaction,
+Role,
+RolePermission,
+Permission
 
 
 
   ],
   migrations: ['src/migrations/*.ts'],
   
-  synchronize: false, // 🚨 very important for migrations
+  synchronize: false,
   logging: true,
+
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });

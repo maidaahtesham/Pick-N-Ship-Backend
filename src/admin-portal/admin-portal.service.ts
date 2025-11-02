@@ -998,6 +998,8 @@ async getAllJobs({ page, limit, status, search }) {
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.courierCompany', 'company')
       .leftJoinAndSelect('s.rider', 'rider')
+      .leftJoinAndSelect('s.customer', 'customer') 
+      .leftJoinAndSelect('s.parcels', 'parcel_details')
       .skip((page - 1) * limit)
       .take(limit);
 

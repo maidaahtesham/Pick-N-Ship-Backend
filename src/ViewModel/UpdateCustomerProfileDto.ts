@@ -30,5 +30,23 @@ export class UpdateCustomerProfileDto {
   is_email_verified?: boolean;
 
   @IsOptional()
+  date_of_birth?: Date;
+
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @IsString()
+  @IsOptional()
+  gender?: string;
+
+
+  country?: string;
+
+
+
+
+
+  @IsOptional()
   files?: Express.Multer.File[]; // For profile image upload
 }

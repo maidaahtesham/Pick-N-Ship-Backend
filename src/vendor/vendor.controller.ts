@@ -212,5 +212,86 @@ async assignJobToRider(
 }
 
 
+  @Post("get-all-roles")
+  async getAllRoles( @Body() body: {
+    page?: number
+    limit?: number
+    search?: string
+    status?: boolean
+  }) {
+    return this.vendorService.getAllRoles(body)
+  }
+
+  @Post("get-by-id")
+  async getRoleById(body: { id: number }) {
+    return this.vendorService.getRoleById(body.id)
+  }
+
+@Post('add-role')
+async createRole(
+  @Body()
+  body: {
+    role_name: string;
+    description?: string;
+    createdBy: string;
+    permissions?: { permission_id: number; access_level: string }[];
+  },
+) {
+  return this.vendorService.createRole(body);
+}
+
+
+
+
+  @Post("update-role")
+  async updateRole(body: {
+    id: number
+    role_name?: string
+    description?: string
+    status?: boolean
+    updated_by: string
+  }) {
+    return this.vendorService.updateRole(body.id, body)
+  }
+
+  @Post("delete-role")
+async deleteRole(@Body() body: { id: number }) {
+    return this.vendorService.deleteRole(body.id)
+  }
+
+@Post("assign-role-to-user")
+async assignRoleToUser(@Body() body: {
+  vendor_user_id: number
+  role_id: number
+}) {
+  return this.vendorService.assignRoleToUser(body)
+}
+
+@Post('get-all-permissions')
+async getAllPermissions() {
+  return this.vendorService.getAllPermissions();
+}
+
+
+
+
+  @Post("user/get-role")
+  async getUserRole(body: { vendor_user_id: number }) {
+    return this.vendorService.getUserRole(body.vendor_user_id)
+  }
+
+  @Post("user/remove-role")
+  async removeRoleFromUser(body: { vendor_user_id: number }) {
+    return this.vendorService.removeRoleFromUser(body.vendor_user_id)
+  }
+
+  @Post("users-by-role")
+  async getUsersByRole(body: {
+    role_id: number
+    page?: number
+    limit?: number
+  }) {
+    return this.vendorService.getUsersByRole(body)
+  }
 
 }

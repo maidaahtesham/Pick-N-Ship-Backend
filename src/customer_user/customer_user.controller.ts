@@ -14,6 +14,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from 'src/config/multer.config';
 import { PaymentDTO } from 'src/ViewModel/PaymentDto';
 import { UpdateCustomerProfileDto } from 'src/ViewModel/UpdateCustomerProfileDto';
+import { customer_user } from 'src/ViewModel/customer-user.dto';
  
 // @UseGuards(JwtAuthGuard)
 
@@ -203,9 +204,24 @@ async getAddressDetail(@Body() body: { address_id: number; customer_id: number }
     return this.customerUserService.updateCustomerProfile(data, data.customerId.toString()); // Pass customerId as string
   }
 
+   @UseGuards(JwtAuthGuard)
+  @Post('get-customer-profile')
+    @HttpCode(200)
+    async getProfile(@Body() body: customer_user, @Req() req: Request): Promise<Response> {
+       const customer_id = body.customer_id;
+      return this.customerUserService.getProfile(customer_id); }
 
 
  
+// // @UseGuards(JwtAuthGuard)
+@Post('verify-email')
+  async verifyCustomerEmail(@Query('token') token: string) {
+    if (!token) {
+      throw new BadRequestException('Verification token is required.');
+    }
+    return this.customerUserService.verifyEmail(token);
+  }
+
 
 
 }

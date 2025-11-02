@@ -13,9 +13,19 @@ import { Rating } from 'src/Models/ratings.entity';
 import { Rider } from 'src/Models/rider.entity';
 import { UploadPictureService } from 'src/upload-pictures/upload_picture/upload_picture.service';
  
+ import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 @Module({
-            imports: [TypeOrmModule.forFeature([Rating,Customer,shipment_request,Shipment,courier_company,shipping_detail, CustomerAddresses,parcel_details,Rider,UploadPictureService, ])],
-
+            imports: [TypeOrmModule.forFeature([Rating,Customer,shipment_request,Shipment,courier_company,shipping_detail, CustomerAddresses,parcel_details,Rider,UploadPictureService, ]),
+  JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '1d' }, // 1 day expiration for email verification
+      }),
+      inject: [ConfigService],
+    }),
+  ],
   controllers: [CustomerUserController],
   providers: [CustomerUserService ],
   exports:[CustomerUserService]

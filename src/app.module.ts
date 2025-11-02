@@ -34,6 +34,7 @@ import { CustomerAddresses } from './Models/customer_addresses.entity';
 import { parcel_details } from './Models/parcel_detail.entity';
 import { UploadPictureModule } from './upload-pictures/upload_picture/upload-picture.module';
 import { PaymentTransaction } from './Models/payment_transactions.entity';
+import { Role } from './Models/role.entity';
    @Module({
   imports: [
     // Load environment variables globally
@@ -93,7 +94,8 @@ import { PaymentTransaction } from './Models/payment_transactions.entity';
         earning,
        CustomerAddresses,
        parcel_details,
-       PaymentTransaction
+       PaymentTransaction,
+       Role
         
       ],
       // migrations: ['dist/migrations/*.ts'],

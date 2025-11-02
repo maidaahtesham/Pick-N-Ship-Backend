@@ -28,6 +28,20 @@ export class Customer {
   @Column({unique:true, length: 20, nullable: true })
    phone_number: string;
 
+  @Column({nullable: true})
+date_of_birth: Date;
+
+@Column({nullable: true})
+gender: string;
+
+@Column({ length: 100, nullable: true })
+city: string;
+
+@Column({ length: 100, nullable: true })
+country: string;
+
+
+
   @OneToMany(() => Rating, (rating) => rating.customer)
     ratings: Rating[];
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { company_document } from '../Models/company_document.entity';
@@ -25,6 +25,9 @@ import { company_çonveyance_pricing_details } from 'src/Models/company_çonveya
 import { profile_status_update_dto } from 'src/ViewModel/profile_status_update_dto';
 import { GetAllShipmentsCustomerDto, GetAllShipmentsVendorDto } from 'src/ViewModel/get_all_shipment_customer_dto';
 import { AcceptShipmentDto } from 'src/ViewModel/accept-shipmentDto';
+import { Role } from 'src/Models/role.entity';
+import { PermissionLevel, RolePermission } from 'src/Models/role-permission.entity';
+import { Permission } from 'src/Models/permission.entity';
 
 @Injectable()
 export class VendorService {
@@ -64,7 +67,18 @@ export class VendorService {
     private companyConveyanceDetailsRepository:Repository<company_çonveyance_details>,
 
     @InjectRepository(company_çonveyance_pricing_details)
-    private companyConveyancePricingReposiory:Repository<company_çonveyance_pricing_details>
+    private companyConveyancePricingReposiory:Repository<company_çonveyance_pricing_details>,
+
+
+    @InjectRepository(Role)
+    private roleRepository:Repository<Role>,
+
+    @InjectRepository(RolePermission)
+    private rolePermissionRepository:Repository<RolePermission>,
+
+    @InjectRepository(Permission)
+    private permissionRepository:Repository<Permission>,
+
 
   ) {}
 
@@ -1472,6 +1486,277 @@ async assignRiderToJob(
   }
 }
 
+  async getAllRoles(params: {
+    page?: number
+    limit?: number
+    search?: string
+    status?: boolean
+  }) {
+    const { page = 1, limit = 10, search, status } = params
 
+    const query = this.roleRepository.createQueryBuilder("role")
+
+    if (search) {
+      query.where("role.role_name ILIKE :search OR role.description ILIKE :search", { search: `%${search}%` })
+    }
+
+    if (status !== false && status !== undefined) {
+      query.andWhere("role.status = :status", { status })
+    }
+
+    const skip = (page - 1) * limit
+    const [data, total] = await query.skip(skip).take(limit).orderBy("role.createdOn", "DESC").getManyAndCount()
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    }
+  }
+
+  // Get role by ID
+  async getRoleById(roleId: number) {
+    const role = await this.roleRepository.findOne({
+      where: { id: roleId },
+    })
+
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${roleId} not found`)
+    }
+
+    return role
+  }
+
+async createRole(data: {
+  role_name: string;
+  description?: string;
+  createdBy: string;
+  permissions?: { permission_id: number; access_level: string }[];
+}) {
+  try {
+    const { role_name, description, createdBy, permissions } = data;
+
+    // Check if role already exists
+    const existingRole = await this.roleRepository.findOne({ where: { role_name } });
+    if (existingRole) {
+      throw new BadRequestException('Role already exists');
+    }
+
+    // Step 1: Create Role
+    const newRole = this.roleRepository.create({
+      role_name,
+      description,
+      createdBy,
+      createdOn: new Date(),
+      updatedOn: new Date(),
+      status: true,
+    });
+
+    const savedRole = await this.roleRepository.save(newRole);
+
+    // Step 2: Link Permissions if provided
+    if (permissions && permissions.length > 0) {
+      const rolePermissions = permissions.map((perm) =>
+        this.rolePermissionRepository.create({
+          role_id: savedRole.id,
+          permission_id: perm.permission_id,
+          access_level: perm.access_level as any,
+          created_by: createdBy,
+          assigned_by: createdBy,
+        }),
+      );
+
+      await this.rolePermissionRepository.save(rolePermissions);
+    }
+
+    return {
+      message: 'Role created successfully',
+      role: savedRole,
+    };
+  } catch (error) {
+    console.error('❌ Error creating role:', error);
+    throw new InternalServerErrorException(error.message);
+  }
+}
+
+
+
+  async updateRole(
+  roleId: number,
+  data: {
+    role_name?: string
+    description?: string
+    status?: boolean
+    updated_by: string
+    permissions?: { permission_id: number; access_level: PermissionLevel }[]
+  },
+) {
+  const { role_name, description, status, updated_by, permissions } = data
+
+   const role = await this.getRoleById(roleId)
+
+   if (role_name && role_name !== role.role_name) {
+    const existingRole = await this.roleRepository.findOne({
+      where: { role_name },
+    })
+    if (existingRole) {
+      throw new BadRequestException(`Role "${role_name}" already exists`)
+    }
+  }
+
+   Object.assign(role, {
+    role_name: role_name ?? role.role_name,
+    description: description ?? role.description,
+    status: status ?? role.status,
+    updated_by,
+    updated_on: new Date(),
+  })
+  await this.roleRepository.save(role)
+
+   if (permissions && permissions.length > 0) {
+     await this.rolePermissionRepository.delete({ role_id: roleId })
+
+     const updatedPermissions = permissions.map((p) =>
+      this.rolePermissionRepository.create({
+        role_id: roleId,
+        permission_id: p.permission_id,
+        access_level: p.access_level,
+        status: true,
+        created_by: updated_by,
+      }),
+    )
+
+    await this.rolePermissionRepository.save(updatedPermissions)
+  }
+
+   return this.getRoleById(roleId)
+}
+
+
+  // Delete role
+async deleteRole(roleId: number) {
+  const role = await this.getRoleById(roleId)
+
+  // Check if role is assigned to any users
+  const userCount = await this.vendorRepository.count({
+    where: { role: { id: roleId } },
+  })
+
+  if (userCount > 0) {
+    throw new BadRequestException(`Cannot deactivate role. It is assigned to ${userCount} user(s)`)
+  }
+
+  // Instead of deleting, mark as inactive
+  role.status = false
+  role.updatedOn = new Date()
+
+  await this.roleRepository.save(role)
+
+  return { message: "Role deactivated successfully" }
+}
+
+async getAllPermissions(filter?: any) {
+  const whereClause: any = { status: true };
+
+  if (filter?.module) {
+    whereClause.module = filter.module;
+  }
+
+  return await this.permissionRepository.find({
+    select: ['id', 'permission_name', 'description', 'module', 'status'],
+    where: whereClause,
+  });
+}
+
+  // Assign role to vendor user
+  async assignRoleToUser(data: {
+    vendor_user_id: number
+    role_id: number
+  }) {
+    const { vendor_user_id, role_id } = data
+
+    // Check if role exists
+    await this.getRoleById(role_id)
+
+    // Get vendor user
+    const vendorUser = await this.vendorRepository.findOne({
+      where: { id: vendor_user_id },
+    })
+
+    if (!vendorUser) {
+      throw new NotFoundException(`Vendor user with ID ${vendor_user_id} not found`)
+    }
+
+    // Update user's role
+    vendorUser.role = await this.getRoleById(role_id)
+    await this.vendorRepository.save(vendorUser)
+
+    return vendorUser
+  }
+
+  // Get user's role
+  async getUserRole(vendor_user_id: number) {
+    const vendorUser = await this.vendorRepository.findOne({
+      where: { id: vendor_user_id },
+      relations: ["role"],
+    })
+
+    if (!vendorUser) {
+      throw new NotFoundException(`Vendor user with ID ${vendor_user_id} not found`)
+    }
+
+    return vendorUser.role
+  }
+
+  // Remove role from user
+  async removeRoleFromUser(vendor_user_id: number) {
+    // const vendorUser = await this.vendorRepository.findOne({
+    //   where: { id: vendor_user_id },
+    // })
+
+    // if (!vendorUser) {
+    //   throw new NotFoundException(`Vendor user with ID ${vendor_user_id} not found`)
+    // }
+
+    // vendorUser.role = await this.getRoleById(role_id)
+    
+    // await this.vendorRepository.save(vendorUser)
+
+    // return { message: "Role removed from user successfully" }
+  }
+
+  // Get all users with a specific role
+  async getUsersByRole(params: {
+    role_id: number
+    page?: number
+    limit?: number
+  }) {
+    const { role_id, page = 1, limit = 10 } = params
+
+    const skip = (page - 1) * limit
+
+const [data, total] = await this.vendorRepository.findAndCount({
+  where: { role: { id: role_id } },
+  relations: ["role", "company"],
+  skip,
+  take: limit,
+  order: { createdOn: "DESC" },
+})
+
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    }
+  }
 
   }

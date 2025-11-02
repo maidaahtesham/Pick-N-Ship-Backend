@@ -30,7 +30,9 @@ import { ConfigService } from '@nestjs/config';
 import { PaymentDTO } from 'src/ViewModel/PaymentDto';
 import { PaymentTransaction } from 'src/Models/payment_transactions.entity';
 import { UpdateCustomerProfileDto } from 'src/ViewModel/UpdateCustomerProfileDto';
-
+import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
+import { JwtService } from '@nestjs/jwt';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class CustomerUserService {
@@ -62,7 +64,7 @@ export class CustomerUserService {
     private uploadPictureService: UploadPictureService,
     private configService: ConfigService,
     private dataSource: DataSource,  
-
+    private jwtService: JwtService, // Inject JwtService
   ) {
 
     const region = this.configService.get<string>('AWS_REGION');
@@ -1062,7 +1064,7 @@ async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
           createdOn: data.createdOn || new Date(),
           updatedBy: data.updatedBy,
           updatedOn: new Date(),
-          is_email_verified:data.is_email_verified,
+          is_email_verified:false,
           status:true,
       
 
@@ -1071,6 +1073,13 @@ async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
         });
         customer = await this.customerRepository.save(newCustomer);
         resp.message = 'Customer user inserted successfully';
+
+
+// Send verification email for new users
+        // const token = this.jwtService.sign({ id: customer.id, email: customer.email }, { expiresIn: '1d' });
+        // await this.sendVerificationEmail(customer.email, token);
+        // console.log(`Verification email sent to ${customer.email}`);
+        // console.log(`Verification token: ${token}`);
       }
 
       resp.success = true;
@@ -1217,6 +1226,7 @@ async addAddress(data: any): Promise<CustomerAddresses> {
       nearest_landmark: data.nearest_landmark,
       address_type: data.address_type,
       area:data.area,
+      address:data.address,
       is_default: data.is_default || false,
       createdBy: data.createdBy,
       updatedBy: data.updatedBy,
@@ -1550,6 +1560,10 @@ console.log({
         phone_number: data.phone_number || customer.phone_number,
         user_type: data.user_type || customer.user_type,
         is_email_verified: data.is_email_verified ?? customer.is_email_verified,
+        date_of_birth: data.date_of_birth || customer.date_of_birth,
+        city: data.city || customer.city,
+        gender: data.gender || customer.gender,
+        country: data.country || customer.country,
         updatedOn: new Date(),
         updatedBy: customerId,
       });
@@ -1579,11 +1593,15 @@ console.log({
         user_type: updatedCustomer.user_type,
         is_email_verified: updatedCustomer.is_email_verified,
         profile_image_url: updatedCustomer.profile_image_url,
+        date_of_birth: updatedCustomer.date_of_birth,
+        city: updatedCustomer.city,
+        gender: updatedCustomer.gender,
+        country: updatedCustomer.country,
         createdOn: updatedCustomer.createdOn,
         updatedOn: updatedCustomer.updatedOn,
       };
       resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
+      resp.customResponseCode = '200 OK';   
       return resp;
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -1595,6 +1613,134 @@ console.log({
       return resp;
     } finally {
       await queryRunner.release();
+    }
+  }
+
+
+
+async getProfile(id: number, token?: string): Promise<Response> {
+    const resp = new Response();
+
+    try {
+      const customer = await this.customerRepository.findOne({ where: { id } });
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+
+      resp.success = true;
+      resp.result = customer;
+      resp.message = 'Profile fetched successfully';
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      return resp;
+    } catch (error) {
+      resp.success = false;
+      resp.message = 'Failed to fetch profile: ' + error.message;
+      resp.httpResponseCode = error instanceof NotFoundException ? 404 : 401;
+      resp.customResponseCode = error instanceof NotFoundException ? '404 Not Found' : '401 Unauthorized';
+      return resp;
+    }
+  }
+
+
+// async verifyEmail(customerId: number) {
+//   const customer = await this.customerRepository.findOne({
+//     where: { id: customerId },
+//   });
+
+//   if (!customer) {
+//     throw new NotFoundException(`Customer with id ${customerId} not found`);
+//   }
+
+//   // ✅ Update email verification status
+//   customer.is_email_verified = true;
+//   customer.updatedOn = new Date();
+
+//   await this.customerRepository.save(customer);
+
+//   return {
+//     success: true,
+//     message: `Customer ID ${customerId} email marked as verified successfully.`,
+//     data: customer,
+//   };
+// }
+// private async sendVerificationEmail(email: string, token: string): Promise<void> {
+//   const transporter = nodemailer.createTransport({
+//     host: "smtp.gmail.com",
+//     port: 465,
+//     secure: true,
+//     auth: {
+//       user: process.env.EMAIL_USER || "info.picknship@gmail.com",
+//       pass: process.env.EMAIL_PASS || "iods taog rsgf sopn",
+//     },
+//     logger: true,
+//     debug: true,
+//   });
+
+//   await transporter.verify()
+//     .then(() => console.log("✅ SMTP connection established successfully"))
+//     .catch((err) => console.error("❌ SMTP connection failed:", err));
+
+//   // Use your domain instead of raw IP for better deliverability
+//   const verificationUrl = `http://18.134.64.212/customer-user/verify-email?token=${token}`;
+
+//   console.log("Verification URL:", verificationUrl);
+
+//   const htmlTemplate = `
+//     <div style="background-color:#f5f5f5;padding:40px;font-family:Arial,sans-serif;text-align:center;">
+//       <div style="background:#fff;border-radius:10px;max-width:500px;margin:0 auto;padding:30px;box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+//         <img src="https://picknship.com/assets/logo.png" alt="Pick N Ship Logo" style="width:80px;margin-bottom:20px;">
+//         <h2 style="color:#301B4A;">Verify Your Email Address</h2>
+//         <p style="color:#555;font-size:15px;margin-bottom:25px;">
+//           Hello! Please verify your email address to activate your account and start using Pick N Ship.
+//         </p>
+//         <a href="${verificationUrl}" style="background-color:#6D28D9;color:#fff;text-decoration:none;padding:12px 28px;border-radius:25px;font-weight:bold;">
+//           Verify Email
+//         </a>
+//         <p style="color:#777;font-size:13px;margin-top:25px;">
+//           If the button doesn’t work, copy and paste this link into your browser:
+//         </p>
+//         <p style="color:#6D28D9;font-size:13px;word-break:break-all;">${verificationUrl}</p>
+//       </div>
+//       <p style="font-size:12px;color:#aaa;margin-top:20px;">
+//         &copy; ${new Date().getFullYear()} Pick N Ship. All rights reserved.
+//       </p>
+//     </div>
+//   `;
+
+//   const mailOptions = {
+//     from: '"Pick N Ship" <info.picknship@gmail.com>',
+//     to: email,
+//     subject: "Verify Your Email Address",
+//     text: `Please verify your email by clicking this link: ${verificationUrl}`,
+//     html: htmlTemplate,
+//   };
+
+//   await transporter.sendMail(mailOptions);
+//   console.log(`✅ Verification email sent to ${email}`);
+
+// }
+
+
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    try {
+      const decoded: any = this.jwtService.verify(token);
+      const customer = await this.customerRepository.findOne({ where: { id: decoded.id, email: decoded.email } });
+      if (!customer) {
+        throw new NotFoundException('Invalid verification link.');
+      } 
+
+      if (customer.is_email_verified) {
+        return { message: 'Email already verified.' };
+      }
+
+      customer.is_email_verified = true;
+      customer.updatedOn = new Date();
+      await this.customerRepository.save(customer);
+
+      return { message: 'Email verified successfully. You can now add your business and get started.' };
+    } catch (error) {
+      throw new BadRequestException('Invalid or expired verification link.');
     }
   }
 
