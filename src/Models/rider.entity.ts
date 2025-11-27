@@ -5,6 +5,7 @@ import { Shipment } from "./shipment.entity";
 import { courier_company } from "./courier_company.entity";
 import { CodPayment } from "./cod_payment.entity";
 import { shipment_jobs } from "./shipment_jobs.entity";
+import { qr_sessions } from "./qr_sessions.entity";
 
 @Entity()
 export class Rider {
@@ -94,6 +95,12 @@ codPayments: CodPayment[]; // Assuming a rider can have multiple cod payments
 
     @OneToMany(() => shipment_jobs, (job) => job.rider)
     shipmentJobs: shipment_jobs[];
+
+@OneToMany(() => qr_sessions, (qr_sessions) => qr_sessions.rider)
+qr_sessions: qr_sessions[];
+
+
+
 
 }
 

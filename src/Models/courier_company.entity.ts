@@ -12,6 +12,7 @@ import { CodPayment } from './cod_payment.entity';
 import { company_çonveyance_details } from './company_conveyance_details.entity';
 import { company_commission_rate } from './company_commission_rate.entity';
 import { earning } from './earnings.entity';
+import { qr_sessions } from './qr_sessions.entity';
 
 
 @Entity()
@@ -111,6 +112,10 @@ commissionRates: company_commission_rate[];
 
 @OneToMany(()=> earning, (earning) => earning.company)
 earnings: earning[];
+
+@OneToMany(() => qr_sessions, (qr_sessions) => qr_sessions.company)
+qr_sessions: qr_sessions[];
+
 
 }
 

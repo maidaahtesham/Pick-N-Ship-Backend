@@ -36,6 +36,8 @@ import { VendorModule } from './vendor/vendor.module';
 import { CustomerUserModule } from './customer_user/customer_user.module';
 import { UploadPictureModule } from './upload-pictures/upload_picture/upload-picture.module';
 import * as sgTransport from 'nodemailer-sendgrid-transport';
+import { qr_sessions } from './Models/qr_sessions.entity';
+import { RiderModule } from './rider/rider.module';
 
 @Module({
   imports: [
@@ -102,11 +104,14 @@ import * as sgTransport from 'nodemailer-sendgrid-transport';
           parcel_details,
           PaymentTransaction,
           Role,
+          qr_sessions,
         ],
         migrations: ['dist/migrations/*.js'],
         migrationsRun: false,
       }),
     }),
+
+    RiderModule,
   ],
 })
 export class AppModule {}
