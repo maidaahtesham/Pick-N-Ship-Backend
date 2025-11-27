@@ -1,9 +1,10 @@
 // auth/auth.controller.ts
-import { Controller, Post, Body, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AdminPortalService } from 'src/admin-portal/admin-portal.service';
 import { VendorService } from 'src/vendor/vendor.service';
 import { CustomerUserService } from 'src/customer_user/customer_user.service';
+import { VendorLoginDto } from 'src/ViewModel/vendor-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -15,12 +16,20 @@ export class AuthController {
     return this.authService.login(user);
   }
 
-  @Post('vendor-login')
-  async vendorlogin(@Body() body: { email: string; password: string }) {
-    const user = await this.vendorService.validateVendorUser(body.email, body.password);
-    return this.authService.vendorlogin(user);
+  // @Post('vendor-login')
+  // async vendorlogin(@Body() body: { email: string; password: string }) {
+  //   const user = await this.vendorService.validateVendorUser(body.email, body.password);
+  //   return this.authService.vendorlogin(user);
 
-  }
+  // }
+
+// auth.controller.ts
+@Post('vendor-login')
+async vendorlogin(@Body() body: VendorLoginDto) {
+  const user = await this.vendorService.validateVendorUser(body.email, body.password);
+  return this.authService.vendorlogin(user);
+}
+
 @Post('customer-login')
   async customerLogin(@Body() body: { email: string; password: string })
   {

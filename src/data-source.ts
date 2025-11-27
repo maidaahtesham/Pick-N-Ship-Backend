@@ -24,6 +24,7 @@ import { PaymentTransaction } from './Models/payment_transactions.entity';
 import { Role } from './Models/role.entity';
 import { RolePermission } from './Models/role-permission.entity';
 import { Permission } from './Models/permission.entity';
+import { admin_commission_settings } from './Models/admin_commission_settings.entity';
   
   
 config(); // load .env
@@ -58,7 +59,8 @@ parcel_details,
 PaymentTransaction,
 Role,
 RolePermission,
-Permission
+Permission,
+admin_commission_settings
 
 
 

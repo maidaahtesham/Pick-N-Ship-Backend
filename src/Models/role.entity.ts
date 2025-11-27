@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from "typeorm"
+import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm"
+import { RolePermission } from "./role-permission.entity";
 
 @Entity("roles")
 export class Role {
@@ -25,4 +26,7 @@ updatedOn: Date;
 
   @Column({ type: 'boolean', default: null })
   status: boolean;
+
+   @OneToMany(() => RolePermission, (rp) => rp.role, { cascade: true })
+  role_permissions: RolePermission[];
 }

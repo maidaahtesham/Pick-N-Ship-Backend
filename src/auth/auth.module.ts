@@ -8,6 +8,7 @@ import { JwtStrategy } from './auth/jwt.strategy';
 import { AuthController } from './auth/auth.controller';
 import { AdminPortalModule } from 'src/admin-portal/admin-portal.module';
 import { VendorModule } from 'src/vendor/vendor.module';
+import { MailerModule } from '@nestjs-modules/mailer';
 
 @Module({
   imports: [
@@ -33,5 +34,6 @@ import { VendorModule } from 'src/vendor/vendor.module';
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
+   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

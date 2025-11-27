@@ -25,7 +25,7 @@ export class Customer {
   @Column()
   user_type: string;
 
-  @Column({unique:true, length: 20, nullable: true })
+  @Column({length: 20, nullable: true })
    phone_number: string;
 
   @Column({nullable: true})
@@ -39,8 +39,6 @@ city: string;
 
 @Column({ length: 100, nullable: true })
 country: string;
-
-
 
   @OneToMany(() => Rating, (rating) => rating.customer)
     ratings: Rating[];

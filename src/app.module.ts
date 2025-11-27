@@ -2,6 +2,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MailerModule } from '@nestjs-modules/mailer';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Import Entities
 import { courier_company } from './Models/courier_company.entity';
@@ -11,18 +14,9 @@ import { Rating } from './Models/ratings.entity';
 import { Rider } from './Models/rider.entity';
 import { Shipment } from './Models/shipment.entity';
 import { shipment_request } from './Models/shipment_request.entity';
- 
-
-// Import Feature Modules
-import { AuthModule } from './auth/auth.module';
-import { AdminPortalModule } from './admin-portal/admin-portal.module';
-import { VendorModule } from './vendor/vendor.module';
 import { vendor_user } from './Models/vendor_user.entity';
 import { company_document } from './Models/company_document.entity';
 import { shipping_detail } from './Models/shipping_detail.entity';
-import { CustomerUserModule } from './customer_user/customer_user.module';
-import * as fs from 'fs';
-import * as path from 'path';
 import { shipping_pricing } from './Models/shipping_pricing.entity';
 import { CodPayment } from './Models/cod_payment.entity';
 import { company_çonveyance_details } from './Models/company_conveyance_details.entity';
@@ -32,80 +26,87 @@ import { earning } from './Models/earnings.entity';
 import { shipment_jobs } from './Models/shipment_jobs.entity';
 import { CustomerAddresses } from './Models/customer_addresses.entity';
 import { parcel_details } from './Models/parcel_detail.entity';
-import { UploadPictureModule } from './upload-pictures/upload_picture/upload-picture.module';
 import { PaymentTransaction } from './Models/payment_transactions.entity';
 import { Role } from './Models/role.entity';
-   @Module({
+
+// Import Modules
+import { AuthModule } from './auth/auth.module';
+import { AdminPortalModule } from './admin-portal/admin-portal.module';
+import { VendorModule } from './vendor/vendor.module';
+import { CustomerUserModule } from './customer_user/customer_user.module';
+import { UploadPictureModule } from './upload-pictures/upload_picture/upload-picture.module';
+import * as sgTransport from 'nodemailer-sendgrid-transport';
+
+@Module({
   imports: [
     // Load environment variables globally
-    ConfigModule.forRoot({ isGlobal: true , 
-      envFilePath: '.env',     
-      load: [() => {
-        console.log('Loading .env file:', process.env); // Debug log
-        return process.env;
-      }], }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+
+    // Mailer Module (uses .env)
+   MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        transport: sgTransport({
+          auth: {
+            api_key: configService.get<string>('SENDGRID_API_KEY'),
+          },
+        }),
+        defaults: {
+          from: configService.get<string>('SENDGRID_FROM_EMAIL'),
+        },
+      }),
+    }),
+
+    // Other Feature Modules
     UploadPictureModule,
     AuthModule,
     AdminPortalModule,
     CustomerUserModule,
     VendorModule,
-    // Async TypeORM configuration with debug logging
-  TypeOrmModule.forRootAsync({
-  imports: [ConfigModule],
-  inject: [ConfigService],
-  useFactory: async (configService: ConfigService) => {
-  
-    return {
-      type: 'postgres',
-      host: configService.get<string>('DB_HOST') || 'localhost',
-      port: parseInt(configService.get<string>('DB_PORT') || '5432', 10),
-      username: configService.get<string>('DB_USERNAME') || 'postgres',
-      password: configService.get<string>('DB_PASSWORD')?.toString() || 'AKDNeHRC',
-      database: configService.get<string>('DB_NAME') || 'pick_n_ship',
-      autoLoadEntities: true,
-      synchronize: false,
-      logging: true,
-      ssl: { 
-        rejectUnauthorized: false,
-      //  ca: [fs.readFileSync(path.join(__dirname, './rds-combined-ca-bundle.pem')).toString()],
-       },      
-  //      retryAttempts: 10,
-  //     retryDelay: 3000,
-  //    extra: {
-  //   ssl: true, // ✅ ye line add karo
-  // },
-      entities: [
-        courier_company,
-        super_admin,
-        Customer,
-        Rating,
-        Rider,
-        Shipment,
-        shipment_request,
-        CodPayment,
-        vendor_user,
-        company_document,
-        shipping_detail,
-        shipping_pricing,
-        company_çonveyance_details,
-        company_çonveyance_pricing_details,
-        company_commission_rate,
-        shipment_jobs,
-        earning,
-       CustomerAddresses,
-       parcel_details,
-       PaymentTransaction,
-       Role
-        
-      ],
-      // migrations: ['dist/migrations/*.ts'],
 
-      migrations: ['dist/migrations/*.js'],
-      migrationsRun: false, // Automatically run migrations on startup
-    };
-  },
-}),
-
+    // Async TypeORM configuration with environment variables
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST') || 'localhost',
+        port: parseInt(configService.get<string>('DB_PORT') || '5432', 10),
+        username: configService.get<string>('DB_USERNAME') || 'postgres',
+        password: configService.get<string>('DB_PASSWORD')?.toString() || 'AKDNeHRC',
+        database: configService.get<string>('DB_NAME') || 'pick_n_ship',
+        autoLoadEntities: true,
+        synchronize: false,
+        logging: true,
+        ssl: { rejectUnauthorized: false },
+        entities: [
+          courier_company,
+          super_admin,
+          Customer,
+          Rating,
+          Rider,
+          Shipment,
+          shipment_request,
+          CodPayment,
+          vendor_user,
+          company_document,
+          shipping_detail,
+          shipping_pricing,
+          company_çonveyance_details,
+          company_çonveyance_pricing_details,
+          company_commission_rate,
+          shipment_jobs,
+          earning,
+          CustomerAddresses,
+          parcel_details,
+          PaymentTransaction,
+          Role,
+        ],
+        migrations: ['dist/migrations/*.js'],
+        migrationsRun: false,
+      }),
+    }),
   ],
 })
 export class AppModule {}

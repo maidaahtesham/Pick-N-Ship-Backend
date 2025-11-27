@@ -24,6 +24,40 @@ export class vendorSignUpDTO{
 
   phone_number:string;
 
+  role_id?: number;
+
+  
+
+
+  
+}
+
+ export class SubvendorSignUpDTO{
+
+  id:number;
+  @IsString()
+  @MinLength(1)
+  first_name: string;
+
+  @IsString()
+  @MinLength(1)
+  last_name: string;
+
+  @IsEmail()
+  email_address: string;
+
+
+  password: string;   
+
+   
+  // company_id: number;   
+
+
+  phone_number:string;
+
+  role_id?: number;
+
+  company_id: number;
 
 
   

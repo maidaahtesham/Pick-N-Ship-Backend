@@ -19,9 +19,20 @@ import * as path from 'path';
 import { CodPayment } from 'src/Models/cod_payment.entity';
 import { company_commission_rate } from 'src/Models/company_commission_rate.entity';
 import { Rating } from 'src/Models/ratings.entity';
+import { admin_commission_settings } from 'src/Models/admin_commission_settings.entity';
+import { response } from 'express';
+import { JwtService } from '@nestjs/jwt';
+import { MailerService } from '@nestjs-modules/mailer'; // This is correct
+import { ConfigService } from '@nestjs/config';
+
 @Injectable()
 export class AdminPortalService {
   constructor(
+        private readonly jwtService: JwtService,
+        private readonly mailerService: MailerService,
+        private readonly config: ConfigService,
+
+
 private dataSource: DataSource,
     @InjectRepository(Rating)
     private ratingRepository: Repository<Rating>,
@@ -46,7 +57,15 @@ private dataSource: DataSource,
 
 
 @InjectRepository(company_commission_rate)
-  private companyCommissionRateRepository: Repository<company_commission_rate>
+  private companyCommissionRateRepository: Repository<company_commission_rate>,
+
+
+@InjectRepository(admin_commission_settings)
+  private adminCommissionSettingsRepository: Repository<admin_commission_settings>,  
+
+
+
+ 
 ) {}
 
 
@@ -80,6 +99,7 @@ async hashPassword(password: string): Promise<string> {
     if (admin) {
        if (data.password) {
         data.password = await this.hashPassword(data.password);
+        data.is_active = true;
       }
       admin = this.superAdminRepository.merge(admin, data);
       await this.superAdminRepository.save(admin);
@@ -234,22 +254,23 @@ async getProfile(admin_id: number, token?: string): Promise<Response> {
  
 async getallCompaniesdetails(body: any): Promise<Response> {
   const { search, status, sortBy, sortOrder, page = 1, limit = 10 } = body;
-  const resp=new Response();
-
+  const resp = new Response();
 
   try {
     // Map frontend sortBy to database column names
     const sortByMap: { [key: string]: string } = {
       registeration_date: 'company.registeration_date',
-      submission_date: 'company.registeration_date', // Handle frontend's submission_date
+      submission_date: 'company.registeration_date',
       company_name: 'company.company_name',
       status: 'company.registeration_status',
+      
     };
-    const mappedSortBy = sortByMap[sortBy] || 'company.registeration_date'; // Default to registeration_date
+    const mappedSortBy = sortByMap[sortBy] || 'company.registeration_date';
 
     const query = this.companyRepository
       .createQueryBuilder('company')
       .leftJoin('company.ratings', 'rating')
+      .leftJoin('company.vendorUser', 'vendor') // join vendor_user table
       .select([
         'company.company_id AS company_id',
         'company.company_name AS company_name',
@@ -257,12 +278,15 @@ async getallCompaniesdetails(body: any): Promise<Response> {
         'company.company_email_address AS email_address',
         'company.registeration_date AS submission_date',
         'company.registeration_status AS status',
-        'company.company_address AS address'
+        'company.company_address AS address',
+        'company.createdOn AS created_on', 
+        'vendor.email_address AS vendor_email_address', // 👈 vendor email added
       ])
       .addSelect('AVG(rating.stars)', 'average_rating')
-      .groupBy('company.company_id');
+      .groupBy('company.company_id')
+      .addGroupBy('vendor.email_address'); // 👈 include vendor field in groupBy
 
-    // Status filter (optional)
+    // Status filter
     if (status && status !== 'All') {
       query.andWhere('company.registeration_status = :status', { status });
     }
@@ -270,45 +294,62 @@ async getallCompaniesdetails(body: any): Promise<Response> {
     // Search filter
     if (search) {
       query.andWhere(
-        '(LOWER(company.company_name) LIKE LOWER(:search) OR LOWER(company.company_email_address) LIKE LOWER(:search))',
+        `(LOWER(company.company_name) LIKE LOWER(:search)
+          OR LOWER(company.company_email_address) LIKE LOWER(:search)
+          OR LOWER(vendor.email_address) LIKE LOWER(:search))`,
         { search: `%${search}%` },
       );
     }
 
     // Sorting
-    if (sortBy) {
-      query.orderBy(mappedSortBy, sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC');
-    } else {
-      query.orderBy('company.registeration_date', 'DESC'); // Default sort
-    }
+    // Sorting
+if (sortBy) {
+  const sortByMap: { [key: string]: string } = {
+    created_on: 'company.createdOn',
+    company_name: 'company.company_name',
+    status: 'company.registeration_status',
+  };
+
+  const mappedSortBy = sortByMap[sortBy] || 'company.createdOn';
+
+  query.orderBy(mappedSortBy, sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC');
+} else {
+  // ✅ default: latest first
+  query.orderBy('company.createdOn', 'DESC');
+}
 
     // Pagination
     query.skip((page - 1) * limit).take(limit);
 
-    // Get raw results (includes aliases like submission_date)
+    // Execute query
     const companies = await query.getRawMany();
 
-    // Get total count for pagination
-    const totalCountQuery = this.companyRepository.createQueryBuilder('company');
+    // Total count
+    const totalCountQuery = this.companyRepository.createQueryBuilder('company')
+      .leftJoin('company.vendorUser', 'vendor');
     if (status && status !== 'All') {
       totalCountQuery.andWhere('company.registeration_status = :status', { status });
     }
     if (search) {
       totalCountQuery.andWhere(
-        '(LOWER(company.company_name) LIKE LOWER(:search) OR LOWER(company.company_email_address) LIKE LOWER(:search))',
+        `(LOWER(company.company_name) LIKE LOWER(:search)
+          OR LOWER(company.company_email_address) LIKE LOWER(:search)
+          OR LOWER(vendor.email_address) LIKE LOWER(:search))`,
         { search: `%${search}%` },
       );
     }
     const totalCount = await totalCountQuery.getCount();
 
+    // Response
     if (companies.length > 0) {
       resp.success = true;
       resp.httpResponseCode = 200;
       resp.customResponseCode = '200 OK';
       resp.message = 'Companies fetched successfully';
       resp.result = companies;
-      resp.count = totalCount;
-    } else {
+      resp.count = totalCount
+
+ } else {
       resp.message = 'No records exist';
       resp.count = 0;
     }
@@ -323,7 +364,6 @@ async getallCompaniesdetails(body: any): Promise<Response> {
     return resp;
   }
 }
-
 
 // async getCompany(companyId: number): Promise<Response> {
 //   const resp=new Response();
@@ -759,58 +799,210 @@ return resp;
 
 // src/admin-portal/admin-portal.service.ts
 
-async setCommission(rates: { company_id: number; commission_type: string; commission_rate: string }[]): Promise<Response> {
-  const resp = new Response();
+// async setCommission(rates: { company_id: number; commission_type: string; commission_rate: string }[]): Promise<Response> {
+//   const resp = new Response();
 
+//   try {
+//     for (const rateData of rates) {
+//       const { company_id, commission_type, commission_rate } = rateData;
+      
+//       // Corrected: Filter using the 'company' relation and its nested 'company_id'
+//       const existingCommission = await this.companyCommissionRateRepository.findOne({
+//         where: {
+//           company: { company_id: company_id }, // This is the correct syntax for relations
+//           commission_type: commission_type,
+//         },
+//       });
+
+//       if (!existingCommission) {
+//         const company = await this.companyRepository.findOne({ where: { company_id } });
+//         if (!company) {
+//           resp.message = 'Company not found';
+//           resp.httpResponseCode = 404;
+//           resp.customResponseCode = '404 NotFound';
+//           return resp;
+//         }
+
+//         const newCommissionRate = this.companyCommissionRateRepository.create({
+//           ...rateData,
+//           company,
+//           createdOn: new Date(),
+//           updatedOn: new Date(),
+//           createdBy: 'admin',
+//           updatedBy: 'admin',
+//           status: true,
+//         });
+//         await this.companyCommissionRateRepository.save(newCommissionRate);
+//       } else {
+//         // Corrected: Update using the 'company' relation and 'commission_type'
+//         await this.companyCommissionRateRepository.update(
+//           { company: { company_id: company_id }, commission_type: commission_type },
+//           { commission_rate, updatedOn: new Date(), updatedBy: 'admin', status: true }
+//         );
+//       }
+//     }
+    
+//     resp.success = true;
+//     resp.message = 'Commission rates updated successfully';
+//     resp.httpResponseCode = 200;
+//     resp.customResponseCode = '200 OK';
+//     resp.result = rates;
+//     return resp;
+
+//   } catch (ex: any) {
+//     resp.message = `Failed to set commission: ${ex.message}`;
+//     resp.httpResponseCode = 400;
+//     resp.customResponseCode = '400 BadRequest';
+//     return resp;
+//   }
+// }
+
+async updateAdminCommission(rates: { commission_type: string; commission_rate: string }[]) {
+  const resp = new Response();
   try {
     for (const rateData of rates) {
-      const { company_id, commission_type, commission_rate } = rateData;
-      
-      // Corrected: Filter using the 'company' relation and its nested 'company_id'
-      const existingCommission = await this.companyCommissionRateRepository.findOne({
-        where: {
-          company: { company_id: company_id }, // This is the correct syntax for relations
-          commission_type: commission_type,
-        },
+      const existing = await this.adminCommissionSettingsRepository.findOne({
+        where: { commission_type: rateData.commission_type },
       });
 
-      if (!existingCommission) {
-        const company = await this.companyRepository.findOne({ where: { company_id } });
-        if (!company) {
-          resp.message = 'Company not found';
-          resp.httpResponseCode = 404;
-          resp.customResponseCode = '404 NotFound';
-          return resp;
-        }
-
-        const newCommissionRate = this.companyCommissionRateRepository.create({
+      if (!existing) {
+        const newRate = this.adminCommissionSettingsRepository.create({
           ...rateData,
-          company,
           createdOn: new Date(),
           updatedOn: new Date(),
-          createdBy: 'admin',
-          updatedBy: 'admin',
-          status: true,
         });
-        await this.companyCommissionRateRepository.save(newCommissionRate);
+        await this.adminCommissionSettingsRepository.save(newRate);
       } else {
-        // Corrected: Update using the 'company' relation and 'commission_type'
-        await this.companyCommissionRateRepository.update(
-          { company: { company_id: company_id }, commission_type: commission_type },
-          { commission_rate, updatedOn: new Date(), updatedBy: 'admin', status: true }
+        await this.adminCommissionSettingsRepository.update(
+          { commission_type: rateData.commission_type },
+          { commission_rate: rateData.commission_rate, updatedOn: new Date() }
         );
       }
     }
-    
+
     resp.success = true;
-    resp.message = 'Commission rates updated successfully';
-    resp.httpResponseCode = 200;
-    resp.customResponseCode = '200 OK';
+    resp.message = "Admin commission updated successfully";
     resp.result = rates;
     return resp;
 
-  } catch (ex: any) {
-    resp.message = `Failed to set commission: ${ex.message}`;
+  } catch (err) {
+    resp.message = err.message;
+    return resp;
+  }
+}
+
+async getAdminCommission({
+  page = 1,
+  limit = 10,
+}: {
+  page?: number;
+  limit?: number;
+}): Promise<Response> {
+  const resp = new Response();
+
+  try {
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    // Fetch only global commission rates
+    const [commissions, total] = await this.adminCommissionSettingsRepository.findAndCount({
+      where: { is_active: true },
+      skip,
+      take,
+    });
+
+    // Default global rates if DB is empty
+    const defaultRates = [
+      { commission_type: 'standard', commission_rate: '10%' },
+      { commission_type: 'sme', commission_rate: '5%' },
+      { commission_type: 'custom', commission_rate: '15%' },
+    ];
+
+    // Map DB result → clean format
+    const dbRates = commissions.map((c) => ({
+      commission_type: c.commission_type,
+      commission_rate: c.commission_rate,
+    }));
+
+    // Ensure both standard + sme exist
+    const mergedRates = defaultRates.map((def) => {
+      const existing = dbRates.find((r) => r.commission_type === def.commission_type);
+      return existing || def;
+    });
+
+    const paginatedResult = mergedRates.slice(skip, skip + take);
+
+    resp.success = true;
+    resp.message = 'Admin commission rates retrieved successfully';
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    resp.result = {
+      data: paginatedResult,
+      pagination: {
+        total: mergedRates.length,
+        page,
+        limit,
+        totalPages: Math.ceil(mergedRates.length / limit),
+      },
+    };
+    return resp;
+  } catch (ex) {
+    resp.message = `Failed to fetch commission rates: ${ex.message}`;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 BadRequest';
+    return resp;
+  }
+}
+
+// company.service.ts
+async companyBasedCommission(data: { company_id: number; rates: { commission_type: string; commission_rate: string }[] }): Promise<Response> {
+  const resp = new Response();
+  const { company_id, rates } = data;
+
+  try {
+    const company = await this.companyRepository.findOne({
+      where: { company_id },
+    });
+
+    if (!company) throw new Error('Company not found');
+
+    // Prevent duplicate
+    const existing = await this.companyCommissionRateRepository.findOne({
+      where: { company: { company_id } },
+    });
+    if (existing) throw new Error('Company already has commission rates set');
+
+    // Validate rates
+    if (!rates || rates.length === 0) throw new Error('Rates are required');
+
+    const commissionsToSave = rates.map(rate =>
+      this.companyCommissionRateRepository.create({
+        company,
+        commission_type: rate.commission_type,
+        commission_rate: rate.commission_rate,
+        createdOn: new Date(),
+        updatedOn: new Date(),
+        createdBy: 'admin',
+        updatedBy: 'admin',
+        status: true,
+      })
+    );
+
+    await this.companyCommissionRateRepository.save(commissionsToSave);
+
+    // Optional: mark company as approved
+     company.updatedOn = new Date();
+    await this.companyRepository.save(company);
+
+    resp.success = true;
+    resp.message = 'Company approved and custom rates set successfully';
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    return resp;
+
+  } catch (error: any) {
+    resp.success = false;
+    resp.message = error.message;
     resp.httpResponseCode = 400;
     resp.customResponseCode = '400 BadRequest';
     return resp;
@@ -1206,8 +1398,278 @@ async markCodAsPaid(codPaymentId: number) {
 }
 
 
-  
+  async getAdminStats(): Promise<Response> {
+    const resp = new Response();
+
+    try {
+      const result = await this.companyRepository
+        .createQueryBuilder('company')
+        .select('COUNT(*)', 'total_companies')
+        .addSelect(
+          `COUNT(CASE WHEN company.registeration_status = 'Active' THEN 1 END)`,
+          'active_registration_companies'
+        )
+        .getRawOne();
+
+      if (!result) {
+        throw new NotFoundException('No company data found');
+      }
+
+      resp.success = true;
+      resp.result = {
+        total_companies: parseInt(result.total_companies),
+        active_registration_companies: parseInt(result.active_registration_companies),
+      };
+      resp.message = 'Company statistics retrieved successfully';
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+
+      return resp;
+    } catch (error) {
+      resp.success = false;
+      resp.message = 'Failed to fetch company stats: ' + error.message;
+      resp.httpResponseCode = error instanceof NotFoundException ? 404 : 500;
+      resp.customResponseCode =
+        error instanceof NotFoundException ? '404 Not Found' : '500 Internal Server Error';
+
+      return resp;
+    }
+  }
 
 
+async checkEmail(email: string): Promise<Response> {
+    const resp = new Response();
+    try {
+      const admin = await this.superAdminRepository.findOne({
+        where: { email, is_active: true },
+      });
 
+      resp.success = true;
+      resp.message = 'Email checked successfully';
+      resp.result = {
+        exists: !!admin,
+        isActive: admin?.is_active || false,
+        username: admin?.username || null,
+        role: admin?.role || null,
+      };
+      return resp;
+    } catch (error) {
+      resp.success = false;
+      resp.message = 'Failed to check email: ' + error.message;
+      resp.httpResponseCode = 500;
+      resp.customResponseCode = '500 Internal Server Error';
+      return resp;
+    }
+  }
+
+  // ------------------- Generate JWT Token -------------------
+  private generateResetToken(payload: { admin_id: number; email: string }): string {
+    return this.jwtService.sign(
+      { sub: payload.admin_id, email: payload.email, type: 'password_reset' },
+      {
+        secret: this.config.get<string>('JWT_SUPER_ADMIN_RESET_SECRET'),
+        expiresIn: '1h',
+      },
+    );
+  }
+
+  // ------------------- Request Password Reset -------------------
+async requestPasswordReset(email: string): Promise<Response> {
+  const resp = new Response();
+
+  try {
+    const admin = await this.superAdminRepository.findOne({ 
+      where: { email, is_active: true } 
+    });
+
+    if (!admin) {
+      resp.success = true;
+      resp.message = 'If the email exists, a reset link has been sent';
+      return resp;
+    }
+
+    const token = this.generateResetToken({ admin_id: admin.admin_id, email: admin.email });
+    const resetUrl = `${this.config.get<string>('FRONTEND_URL_SUPER_ADMIN')}/reset-password?token=${token}`;
+
+    await this.mailerService.sendMail({
+      to: admin.email,
+      subject: 'PicknShip Super Admin - Password Reset Request',
+      html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      line-height: 1.6; 
+      color: #333; 
+      background-color: #f9f9f9;
+    }
+    .container { 
+      max-width: 600px; 
+      margin: 30px auto; 
+      padding: 20px; 
+      background: #ffffff;
+      border: 1px solid #e5e5e5; 
+      border-radius: 10px; 
+    }
+    .header { 
+      background: #5A2D82; /* ✅ Purple */
+      color: white; 
+      padding: 20px; 
+      border-radius: 10px 10px 0 0; 
+      text-align: center;
+    }
+    a.button { 
+      display: inline-block; 
+      padding: 14px 26px; 
+      background-color: #7A42B6; /* ✅ Lighter purple */
+      color: white !important; 
+      text-decoration: none; 
+      border-radius: 6px; 
+      font-weight: bold;
+      margin: 25px 0; 
+    }
+    a.button:hover {
+      background-color: #6938A8;
+    }
+    .footer { 
+      margin-top: 35px; 
+      font-size: 12px; 
+      color: #666; 
+      text-align: center;
+    }
+    .security-note { 
+      background: #f3e8ff; 
+      padding: 12px; 
+      border-radius: 6px; 
+      border-left: 5px solid #7A42B6; 
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>PicknShip</h1>
+      <p>Super Admin Portal — Password Reset</p>
+    </div>
+
+    <div style="padding: 20px;">
+      <h2>Password Reset Request</h2>
+
+      <p>Hello {{USERNAME}},</p>
+
+      <p>You requested to reset your password for the PicknShip Super Admin Portal.</p>
+
+      <p>Click the button below to reset your password:</p>
+
+      <a href="{{RESET_URL}}" class="button">Reset Password</a>
+
+      <p>This link will expire in <strong>1 hour</strong>.</p>
+
+      <div class="security-note">
+        <strong>Security Notice:</strong> If you did not request this reset, please ignore this email or contact support immediately.
+      </div>
+
+      <div class="footer">
+        <p>Best regards,<br>PicknShip System Administration</p>
+        <p>© ${new Date().getFullYear()} PicknShip · All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+  </body>
+</html>
+      `,
+    });
+
+    resp.success = true;
+    resp.message = 'Reset link sent successfully';
+    resp.result = { email: admin.email };
+    return resp;
+
+  } catch (error) {
+    resp.success = false;
+    resp.message = 'Failed to send reset link: ' + error.message;
+    resp.httpResponseCode = 500;
+    return resp;
+  }
+}
+
+  // ------------------- Validate Token -------------------
+  async validateResetToken(token: string): Promise<Response> {
+    const resp = new Response();
+
+    try {
+      const payload: any = this.jwtService.verify(token, {
+        secret: this.config.get<string>('JWT_SUPER_ADMIN_RESET_SECRET'),
+      });
+
+      const admin = await this.superAdminRepository.findOne({
+        where: { admin_id: payload.sub, is_active: true },
+      });
+
+      if (!admin) throw new NotFoundException('Super Admin not found');
+
+      resp.success = true;
+      resp.message = 'Token is valid';
+      resp.result = {
+        email: payload.email,
+        username: admin.username,
+        role: admin.role,
+      };
+      return resp;
+
+    } catch (error) {
+      resp.success = false;
+      resp.message = 'Invalid or expired token: ' + error.message;
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 Bad Request';
+      return resp;
+    }
+  }
+
+  // ------------------- Reset Password -------------------
+  async resetPassword(body: { token: string; newPassword: string; confirmPassword: string }): Promise<Response> {
+    const resp = new Response();
+
+    try {
+      if (body.newPassword !== body.confirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+
+      const payload: any = this.jwtService.verify(body.token, {
+        secret: this.config.get<string>('JWT_SUPER_ADMIN_RESET_SECRET'),
+      });
+
+      const hashedPassword = await bcrypt.hash(body.newPassword, 10);
+
+      await this.superAdminRepository.update(
+        { admin_id: payload.sub, is_active: true },
+        { password: hashedPassword, updatedOn: new Date() },
+      );
+
+      const admin = await this.superAdminRepository.findOne({ where: { admin_id: payload.sub } });
+
+      // Confirmation email
+      await this.mailerService.sendMail({
+        to: admin?.email,
+        from: this.config.get<string>('MAIL_FROM'),
+        subject: 'PicknShip Super Admin - Password Updated',
+        html: `<p>Hello ${admin?.username || 'Super Admin'},</p>
+               <p>Your password has been successfully reset.</p>
+               <p>If you did not request this, please contact support immediately.</p>`,
+      });
+
+      resp.success = true;
+      resp.message = 'Password reset successfully';
+      return resp;
+
+    } catch (error) {
+      resp.success = false;
+      resp.message = 'Failed to reset password: ' + error.message;
+      resp.httpResponseCode = 400;
+      return resp;
+    }
+  }
   }

@@ -26,6 +26,7 @@ export class VendorOperationDTO {
   company_document_path?: string;
   establishment_card_front?: string;
   establishment_card_back?: string;
+  establishment_card_number?: string;
 
   trade_license_expiry_date?: string;
   trade_license_number?: string;

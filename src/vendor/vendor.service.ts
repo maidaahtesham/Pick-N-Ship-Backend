@@ -10,7 +10,7 @@ import { company_document_dto } from '../ViewModel/company_document_dto';
 import { Response } from '../ViewModel/response';
 import { shipping_detail_dto } from '../ViewModel/shipping_detail_dto';
 import { vendorDetailsDTO } from '../ViewModel/vendorDetailsDTO.dto';
-import { vendorSignUpDTO } from '../ViewModel/vendorSignUpDTO.dto';
+import { SubvendorSignUpDTO, vendorSignUpDTO } from '../ViewModel/vendorSignUpDTO.dto';
 import { DataSource, Repository } from 'typeorm';
 import { Rider } from 'src/Models/rider.entity';
 import { GetAllActiveShipmentsDto, GetAllShipmentsDto } from 'src/ViewModel/get_all_shipment_dto';
@@ -28,11 +28,15 @@ import { AcceptShipmentDto } from 'src/ViewModel/accept-shipmentDto';
 import { Role } from 'src/Models/role.entity';
 import { PermissionLevel, RolePermission } from 'src/Models/role-permission.entity';
 import { Permission } from 'src/Models/permission.entity';
+import { JwtService } from '@nestjs/jwt';
+import { MailerService } from '@nestjs-modules/mailer';
+import { ConfigService } from '@nestjs/config';
 
-@Injectable()
+ @Injectable()
 export class VendorService {
   constructor(
     private dataSource: DataSource,
+
     @InjectRepository(vendor_user)
     private vendorRepository: Repository<vendor_user>,
 
@@ -96,8 +100,10 @@ export class VendorService {
     }
 
     const hashedPassword = await this.hashPassword(data.password);
-
     // Create vendor user without company (signup stage)
+const adminRole = await this.roleRepository.findOne({ where: { id: 1 } });
+if (!adminRole) throw new Error('Default admin role not found');
+
     const newVendor = this.vendorRepository.create({
       first_name: data.first_name,
       last_name: data.last_name,
@@ -106,6 +112,7 @@ export class VendorService {
       phone_number: data.phone_number,
       status: true,
       company: undefined, // skip karo signup ke time
+      role: adminRole, // Assign default admin role
     });
 
     const vendor = await this.vendorRepository.save(newVendor);
@@ -126,24 +133,115 @@ export class VendorService {
 }
 
 
+async createVendorSubUser(data: SubvendorSignUpDTO): Promise<Response> {
+  const resp = new Response();
+  try {
+    if (!data.email_address) {
+      throw new Error('Email is required');
+    }
+
+    // 🔹 Static/Random Password
+    const staticPassword = 'Vendor@123'; // <---- Set static password
+    const hashedPassword = await this.hashPassword(staticPassword);
+
+    // 🔹 Fetch dynamic role
+    const role = await this.roleRepository.findOne({
+      where: { id: data.role_id },
+    });
+
+    if (!role) {
+      throw new Error(`Role with ID ${data.role_id} not found`);
+    }
+    const company = await this.courierCompanyRepository.findOne({
+      where: { company_id: data.company_id },
+    });
+
+    if (!company) {
+      throw new Error(`Company with ID ${data.company_id} not found`);
+    }
+    // 🔹 Create vendor user
+    const newVendor = this.vendorRepository.create({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      email_address: data.email_address,
+      password: hashedPassword,
+      phone_number: data.phone_number,
+      status: true,
+      company: company, // signup stage me skip
+      role: role,         // dynamic role assign
+    });
+
+    const vendor = await this.vendorRepository.save(newVendor);
+
+    resp.success = true;
+    resp.message = 'Vendor user inserted successfully';
+    resp.result = vendor;
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    return resp;
+
+  } catch (error) {
+    resp.success = false;
+    resp.message = 'Failed to insert/update vendor user: ' + error.message;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 Bad Request';
+    return resp;
+  }
+}
+
+
+
   async findByEmail(email_address: string): Promise<vendor_user | null> {
     return this.vendorRepository.findOne({ where: { email_address } , relations: ['company']});
   }
 
-  async validateVendorUser(email: string, password: string): Promise<any> {
-    const user = await this.findByEmail(email);
-    if (!user || !user.password) {
-      throw new UnauthorizedException('Invalid credentials');
+async validateVendorUser(email: string, password: string): Promise<any> {
+  const user = await this.vendorRepository.findOne({
+    where: { email_address: email },
+    relations: [
+      'company',
+      'role',                    // ← load role
+      'role.role_permissions',   // ← load role_permissions
+      'role.role_permissions.permission'  // ← load actual permission details
+    ],
+    select: {
+      id: true,
+      first_name: true,
+      last_name: true,
+      email_address: true,
+      phone_number: true,
+      is_profile_complete: true,
+      status: true,
+      password: true,
+      is_email_verified:true,
+      createdOn: true,
+      updatedOn: true,
+
+      company: { company_name: true, company_id: true, city: true,company_address:true,company_email_address:true,company_phone_number:true,
+        pns_account_full_name:true,registeration_date:true, registeration_status:true, rejection_reason:true, acceptance_reason:true, is_profile_complete:true, 
+       },
+      role: {
+        id: true,
+        role_name: true,
+        description: true,
+      },
     }
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-    const { password: userPassword, ...result } = user;
-    return result;
+  });
+
+  if (!user) {
+    throw new UnauthorizedException('Invalid credentials');
   }
 
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    throw new UnauthorizedException('Invalid credentials');
+  }
 
+  // Remove password before returning
+  const { password: _, ...userWithoutPassword } = user;
+
+  return userWithoutPassword;
+}
 
   async addVendorDetails(data: vendorDetailsDTO): Promise<Response> {
     const resp= new Response();
@@ -872,6 +970,92 @@ async markShipmentAsReceived(shipmentId: number): Promise<Response> {
     };
   }
 }
+async getVendorCompleteDetails(vendorId: number): Promise<Response> {
+  const resp = new Response();
+
+  try {
+    const vendor = await this.vendorRepository.findOne({
+      where: { id: vendorId },
+      relations: [
+        'company',
+        'company.company_document',
+        'company.company_conveyance_details',
+        'company.company_conveyance_details.pricing',
+      ],
+    });
+
+    if (!vendor) throw new Error('Vendor not found');
+
+    const company = vendor.company;
+
+    // 🧹 Clean and flatten documents
+    const documents =
+      company?.company_document?.map((doc) => ({
+        document_id: doc.document_id ?? doc.document_id,
+        trade_license_number: doc.trade_license_number,
+        trade_license_expiry_date: doc.trade_license_expiry_date,
+        trade_license_document_path: doc.trade_license_document_path,
+        establishment_card_number: doc.establishment_card_number,
+        establishment_card_front: doc.establishment_card_front,
+        establishment_card_back: doc.establishment_card_back,
+        establishment_card_expiry_date: doc.establishment_card_expiry_date,
+        is_active: doc.is_active,
+      })) ?? [];
+
+    // 🧹 Clean conveyance + pricing
+    const shippingDetails =
+      company?.company_conveyance_details?.map((conv) => ({
+        conveyance_id: conv.id,
+        type: conv.conveyance_types,
+        details: conv.conveyance_details,
+        createdOn: conv.createdOn,
+        is_active: conv.is_active,
+        pricing:
+          conv.pricing?.map((p) => ({
+            id: p.pricing_id ?? p.pricing_id,
+            size: p.size,
+            weight: p.weight,
+            width: p.width,
+            length: p.length,
+            height: p.height,
+            baseFare: p.baseFare,
+            pricePerKm: p.pricePerKm,
+          })) ?? [],
+      })) ?? [];
+
+    // ✅ Final formatted result
+    const result = {
+      vendor_id: vendor.id,
+      vendor_name: `${vendor.first_name} ${vendor.last_name}`,
+      company: {
+        company_id: company?.company_id,
+        company_name: company?.company_name,
+        city: company?.city,
+        company_address: company?.company_address,
+        company_phone_number: company?.company_phone_number,
+        registration_status: company?.registeration_status ?? company?.registeration_status,
+        is_profile_complete: company?.is_profile_complete ?? false,
+        documents,
+        shipping_details: shippingDetails,
+      },
+    };
+
+    resp.success = true;
+    resp.message = 'Vendor complete details fetched successfully';
+    resp.result = result;
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+  } catch (error) {
+    resp.success = false;
+    resp.message = 'Failed to fetch vendor details: ' + (error as Error).message;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 Bad Request';
+  }
+
+  return resp;
+}
+
+
 
 async addVendorCompleteDetails(data: VendorOperationDTO): Promise<Response> {
   const resp = new Response();
@@ -960,6 +1144,7 @@ async addVendorCompleteDetails(data: VendorOperationDTO): Promise<Response> {
         trade_license_expiry_date: data.trade_license_expiry_date,
         trade_license_number: data.trade_license_number,
         establishment_card_expiry_date:data.establishment_card_expiry_date,
+        establishment_card_number:data.establishment_card_number,
         createdOn,
         createdBy: data.created_by,
         updatedOn,
@@ -986,6 +1171,132 @@ async addVendorCompleteDetails(data: VendorOperationDTO): Promise<Response> {
     resp.customResponseCode = '400 Bad Request';
     return resp;
   }
+}
+async updateVendorCompleteDetails(data: any): Promise<Response> {
+  const resp = new Response();
+
+  const {
+    vendor_id,
+    vendor_name,
+    company, // contains all company, document, and shipping details
+  } = data;
+
+  try {
+    const vendor = await this.vendorRepository.findOne({
+      where: { id: vendor_id },
+      relations: [
+        'company',
+        'company.company_document',
+        'company.company_conveyance_details',
+        'company.company_conveyance_details.pricing',
+      ],
+    });
+
+    if (!vendor) throw new Error('Vendor not found');
+
+    // ✅ Split vendor_name into first/last name if needed
+    const [first_name, ...lastParts] = vendor_name.split(' ');
+    const last_name = lastParts.join(' ');
+
+    vendor.first_name = first_name;
+    vendor.last_name = last_name;
+
+    const companyEntity = vendor.company;
+    if (!companyEntity) throw new Error('Company not found');
+
+    // ✅ Update company info
+    companyEntity.company_name = company.company_name;
+    companyEntity.city = company.city;
+    companyEntity.company_address = company.company_address;
+    companyEntity.company_phone_number = company.company_phone_number;
+    companyEntity.registeration_status = company.registration_status;
+    companyEntity.is_profile_complete = company.is_profile_complete ?? false;
+
+    // ✅ Update or insert company documents
+    if (company.documents && company.documents.length > 0) {
+      for (const doc of company.documents) {
+        let document = companyEntity.company_document?.find(
+          (d) => d.document_id === doc.document_id,
+        );
+
+        if (!document) {
+          document = this.companyDocumentRepository.create({
+            company: companyEntity,
+          });
+        }
+
+        document.trade_license_number = doc.trade_license_number;
+        document.trade_license_expiry_date = doc.trade_license_expiry_date;
+        document.trade_license_document_path = doc.trade_license_document_path;
+        document.establishment_card_number = doc.establishment_card_number;
+        document.establishment_card_front = doc.establishment_card_front;
+        document.establishment_card_back = doc.establishment_card_back;
+        document.establishment_card_expiry_date = doc.establishment_card_expiry_date;
+        document.is_active = doc.is_active ?? true;
+
+        await this.companyDocumentRepository.save(document);
+      }
+    }
+
+    // ✅ Update conveyance + pricing
+    if (company.shipping_details && company.shipping_details.length > 0) {
+      for (const sd of company.shipping_details) {
+        let conveyance = companyEntity.company_conveyance_details?.find(
+          (c) => c.id === sd.conveyance_id,
+        );
+
+        if (!conveyance) {
+          conveyance = this.companyConveyanceDetailsRepository.create({
+            company: companyEntity,
+          });
+        }
+
+        conveyance.conveyance_types = sd.type;
+        conveyance.conveyance_details = sd.details;
+        conveyance.is_active = sd.is_active ?? true;
+        await this.companyConveyanceDetailsRepository.save(conveyance);
+
+        // 🔁 Update pricing details
+        if (sd.pricing && sd.pricing.length > 0) {
+          for (const p of sd.pricing) {
+            let price = conveyance.pricing?.find((x) => x.pricing_id === p.id);
+
+            if (!price) {
+              price = this.companyConveyancePricingReposiory.create({
+                conveyance_detail: conveyance,
+              });
+            }
+
+            price.size = p.size;
+            price.weight = p.weight;
+            price.width = p.width;
+            price.length = p.length;
+            price.height = p.height;
+            price.baseFare = p.baseFare;
+            price.pricePerKm = p.pricePerKm;
+
+            await this.companyConveyancePricingReposiory.save(price);
+          }
+        }
+      }
+    }
+
+    // ✅ Save final vendor + company
+    await this.vendorRepository.save(vendor);
+    await this.courierCompanyRepository.save(companyEntity);
+
+    resp.success = true;
+    resp.message = 'Vendor complete details updated successfully';
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+  } catch (error) {
+    resp.success = false;
+    resp.message = 'Failed to update vendor details: ' + (error as Error).message;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 Bad Request';
+  }
+
+  return resp;
 }
 
 
@@ -1519,17 +1830,37 @@ async assignRiderToJob(
   }
 
   // Get role by ID
-  async getRoleById(roleId: number) {
-    const role = await this.roleRepository.findOne({
-      where: { id: roleId },
-    })
+async getRoleById(roleId: number) {
+  const role = await this.roleRepository.findOne({
+    where: { id: roleId },
+    relations: ["role_permissions", "role_permissions.permission"],
+  });
 
-    if (!role) {
-      throw new NotFoundException(`Role with ID ${roleId} not found`)
-    }
-
-    return role
+  if (!role) {
+    throw new NotFoundException(`Role with ID ${roleId} not found`);
   }
+
+  // Format response
+  const formattedRole = {
+    id: role.id,
+    role_name: role.role_name,
+    description: role.description,
+    createdBy: role.createdBy,
+    updatedBy: role.updatedBy,
+    status: role.status,
+    createdOn: role.createdOn,
+    updatedOn: role.updatedOn,
+    permissions: role.role_permissions?.map((rp) => ({
+      permission_id: rp.permission_id,
+      permission_name: rp.permission?.permission_name,
+      module: rp.permission?.module,
+      access_level: rp.access_level,
+    })) || [],
+  };
+
+  return formattedRole;
+}
+
 
 async createRole(data: {
   role_name: string;
@@ -1588,52 +1919,61 @@ async createRole(data: {
   async updateRole(
   roleId: number,
   data: {
-    role_name?: string
-    description?: string
-    status?: boolean
-    updated_by: string
-    permissions?: { permission_id: number; access_level: PermissionLevel }[]
+    role_name?: string;
+    description?: string;
+    status?: boolean;
+    updated_by: string;
+    permissions?: { permission_id: number; access_level: PermissionLevel }[];
   },
 ) {
-  const { role_name, description, status, updated_by, permissions } = data
+  const { role_name, description, status, updated_by, permissions } = data;
 
-   const role = await this.getRoleById(roleId)
+  // Check if role exists
+  const role = await this.roleRepository.findOne({ where: { id: roleId } });
+  if (!role) {
+    throw new NotFoundException(`Role with ID ${roleId} not found`);
+  }
 
-   if (role_name && role_name !== role.role_name) {
+  // Prevent duplicate role name
+  if (role_name && role_name !== role.role_name) {
     const existingRole = await this.roleRepository.findOne({
       where: { role_name },
-    })
+    });
     if (existingRole) {
-      throw new BadRequestException(`Role "${role_name}" already exists`)
+      throw new BadRequestException(`Role "${role_name}" already exists`);
     }
   }
 
-   Object.assign(role, {
+  // Update basic role info
+  Object.assign(role, {
     role_name: role_name ?? role.role_name,
     description: description ?? role.description,
     status: status ?? role.status,
-    updated_by,
-    updated_on: new Date(),
-  })
-  await this.roleRepository.save(role)
+    updatedBy: updated_by,
+    updatedOn: new Date(),
+  });
 
-   if (permissions && permissions.length > 0) {
-     await this.rolePermissionRepository.delete({ role_id: roleId })
+  await this.roleRepository.save(role);
 
-     const updatedPermissions = permissions.map((p) =>
+  // Update permissions
+  if (permissions) {
+    await this.rolePermissionRepository.delete({ role_id: roleId });
+
+    const newPermissions = permissions.map((p) =>
       this.rolePermissionRepository.create({
         role_id: roleId,
         permission_id: p.permission_id,
         access_level: p.access_level,
-        status: true,
         created_by: updated_by,
+        assigned_by: updated_by,
       }),
-    )
+    );
 
-    await this.rolePermissionRepository.save(updatedPermissions)
+    await this.rolePermissionRepository.save(newPermissions);
   }
 
-   return this.getRoleById(roleId)
+  // Return complete role with permissions (like getRoleById)
+  return this.getRoleById(roleId);
 }
 
 
@@ -1672,31 +2012,31 @@ async getAllPermissions(filter?: any) {
   });
 }
 
-  // Assign role to vendor user
-  async assignRoleToUser(data: {
-    vendor_user_id: number
-    role_id: number
-  }) {
-    const { vendor_user_id, role_id } = data
+  // // Assign role to vendor user
+  // async assignRoleToUser(data: {
+  //   vendor_user_id: number
+  //   role_id: number
+  // }) {
+  //   const { vendor_user_id, role_id } = data
 
-    // Check if role exists
-    await this.getRoleById(role_id)
+  //   // Check if role exists
+  //   await this.getRoleById(role_id)
 
-    // Get vendor user
-    const vendorUser = await this.vendorRepository.findOne({
-      where: { id: vendor_user_id },
-    })
+  //   // Get vendor user
+  //   const vendorUser = await this.vendorRepository.findOne({
+  //     where: { id: vendor_user_id },
+  //   })
 
-    if (!vendorUser) {
-      throw new NotFoundException(`Vendor user with ID ${vendor_user_id} not found`)
-    }
+  //   if (!vendorUser) {
+  //     throw new NotFoundException(`Vendor user with ID ${vendor_user_id} not found`)
+  //   }
 
-    // Update user's role
-    vendorUser.role = await this.getRoleById(role_id)
-    await this.vendorRepository.save(vendorUser)
+  //   // Update user's role
+  //   vendorUser.role = await this.getRoleById(role_id)
+  //   await this.vendorRepository.save(vendorUser)
 
-    return vendorUser
-  }
+  //   return vendorUser
+  // }
 
   // Get user's role
   async getUserRole(vendor_user_id: number) {
@@ -1759,4 +2099,40 @@ const [data, total] = await this.vendorRepository.findAndCount({
     }
   }
 
+async getCompanyUsers(company_id: number): Promise<Response> {
+    const resp = new Response();
+
+    try {
+      if (!company_id) {
+        throw new BadRequestException('Company ID is required');
+      }
+
+      const users = await this.vendorRepository
+        .createQueryBuilder('vu')
+        .leftJoinAndSelect('vu.role', 'r')
+        .where('vu.company_id = :company_id', { company_id })
+        .andWhere('vu.role_id != :super', { super: 1 })
+        .orderBy('vu.first_name', 'ASC')
+        .addOrderBy('vu.last_name', 'ASC')
+        .getMany();
+
+      resp.success = true;
+      resp.result = users;
+      resp.message = 'Company users fetched successfully';
+      resp.httpResponseCode = 200;
+      resp.customResponseCode = '200 OK';
+      return resp;
+
+    } catch (error) {
+      resp.success = false;
+      resp.message = 'Failed to fetch company users: ' + error.message;
+      resp.httpResponseCode =
+        error instanceof BadRequestException ? 400 : 500;
+      resp.customResponseCode =
+        error instanceof BadRequestException ? '400 Bad Request' : '500 Internal Server Error';
+      return resp;
+    }
   }
+
+
+ }

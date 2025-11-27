@@ -20,6 +20,9 @@ export class company_document {
   @Column({ length: 255, nullable: true })
   company_document_path: string;
 
+  @Column({ length: 50, nullable: true })
+  establishment_card_number: string;
+
   @Column({ length: 255, nullable: true })
   establishment_card_front: string;
 

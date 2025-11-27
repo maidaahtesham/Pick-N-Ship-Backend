@@ -9,6 +9,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('api/admin-portal')
 export class AdminPortalController {
+
   constructor(private readonly adminPortalService: AdminPortalService) {}
 
 @Post('create-super-admin')
@@ -85,16 +86,36 @@ updateCompanyStatus(@Body() data: { company_id: number; status: 'pending'| 'acti
     return this.adminPortalService.getCommission(body);
   }
 
- @UseGuards(JwtAuthGuard)
- @Post('set-commission')
+//  @UseGuards(JwtAuthGuard)
+//  @Post('set-commission')
   
-  @UsePipes(new ValidationPipe({ transform: true }))
-   async setCommission(@Body() body: { company_id: number; commission_type: string; commission_rate: string }[]) {
-    console.log(body);
-     return this.adminPortalService.setCommission(body);
-  }
- 
+//   @UsePipes(new ValidationPipe({ transform: true }))
+//    async setCommission(@Body() body: { company_id: number; commission_type: string; commission_rate: string }[]) {
+//     console.log(body);
+//      return this.adminPortalService.setCommission(body);
+//   }
 
+@UseGuards(JwtAuthGuard)
+@Post('update-admin-commission')
+async updateAdminCommission(
+  @Body() body: { commission_type: string; commission_rate: string }[]
+) {
+  console.log('Admin Commission Update Body:', body);
+  return this.adminPortalService.updateAdminCommission(body);
+}
+
+ @UseGuards(JwtAuthGuard)
+ @Post('get-admin-commission')
+ @HttpCode(200)
+  async getAdminCommission(@Body() body: {page?: number; limit?: number }): Promise<Response> {
+    return this.adminPortalService.getAdminCommission(body);
+  }
+
+@Post('company-based-commission')
+@HttpCode(200)
+async companyBasedCommission(@Body() body: { company_id: number; rates: any[] }): Promise<Response> {
+  return this.adminPortalService.companyBasedCommission(body);
+}
 
  @UseGuards(JwtAuthGuard)
 @Post('get-ratings')
@@ -162,6 +183,39 @@ async markCodAsPaid(@Body() body: { codPaymentId: number }) {
 }
 
 
+
+  @UseGuards(JwtAuthGuard)
+  @Post('get-admin-stats')
+  @HttpCode(200)
+  async getAdminStats(): Promise<Response> {
+    return this.adminPortalService.getAdminStats();
+  }
+
+ @Post('check-email')
+@HttpCode(200)
+async checkEmail(@Body() body: { email: string }): Promise<Response> {
+  return this.adminPortalService.checkEmail(body.email);
+}
+
+@Post('request-password-reset')
+@HttpCode(200)
+async requestReset(@Body() body: { email: string }): Promise<Response> {
+  return this.adminPortalService.requestPasswordReset(body.email);
+}
+
+@Post('validate-reset-token')
+@HttpCode(200)
+async validateToken(@Body() body: { token: string }): Promise<Response> {
+  return this.adminPortalService.validateResetToken(body.token);
+}
+
+@Post('reset-password')
+@HttpCode(200)
+async resetPassword(
+  @Body() body: { token: string; newPassword: string; confirmPassword: string },
+): Promise<Response> {
+  return this.adminPortalService.resetPassword(body);
+}
 
 
 }

@@ -3,7 +3,7 @@ import { VendorService } from './vendor.service';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 import { courier_company } from '../Models/courier_company.entity';
 import { Response } from '../ViewModel/response';
-import { vendorSignUpDTO } from '../ViewModel/vendorSignUpDTO.dto';
+import { SubvendorSignUpDTO, vendorSignUpDTO } from '../ViewModel/vendorSignUpDTO.dto';
 import { vendorDetailsDTO } from '../ViewModel/vendorDetailsDTO.dto';
 import { company_document_dto } from '../ViewModel/company_document_dto';
 import { shipping_detail_dto } from '../ViewModel/shipping_detail_dto';
@@ -14,6 +14,7 @@ import { VendorOperationDTO } from 'src/ViewModel/VendorOperationDTO';
 import { profile_status_update_dto } from 'src/ViewModel/profile_status_update_dto';
 import { GetAllShipmentsVendorDto } from 'src/ViewModel/get_all_shipment_customer_dto';
 import { AcceptShipmentDto } from 'src/ViewModel/accept-shipmentDto';
+import { PermissionLevel } from 'src/Models/role-permission.entity';
 
 
 @Controller('api/vendor')
@@ -26,6 +27,13 @@ constructor (private readonly vendorService:VendorService)
 async createVendorUser(@Body() data:vendorSignUpDTO): Promise<Response>{
     return this.vendorService.createVendorUser(data);
 }
+
+@Post('create-vendor-sub-user')
+@HttpCode(200)
+async createVendorSubUser(@Body() data:SubvendorSignUpDTO): Promise<Response>{
+    return this.vendorService.createVendorSubUser(data);
+}
+
 
 
 @UseGuards(JwtAuthGuard)
@@ -41,6 +49,12 @@ async createVendorUser(@Body() data:vendorSignUpDTO): Promise<Response>{
     return this.vendorService.addCompanyDocuments(data);
   }
 
+@UseGuards(JwtAuthGuard)
+@Post('get-vendor-complete-details')
+@HttpCode(200)
+async getVendorCompleteDetails(@Body() body: { vendor_id: number }): Promise<Response> {
+  return this.vendorService.getVendorCompleteDetails(body.vendor_id);
+}
 
 
 @UseGuards(JwtAuthGuard)
@@ -50,6 +64,15 @@ async addVendorCompleteDetails(
   @Body() data: VendorOperationDTO,
 ): Promise<Response> {
   return this.vendorService.addVendorCompleteDetails(data);
+}
+
+@UseGuards(JwtAuthGuard)
+@Post('update-vendor-complete-details')
+@HttpCode(200)
+async updateVendorCompleteDetails(
+  @Body() body: any,
+): Promise<Response> {
+  return this.vendorService.updateVendorCompleteDetails(body);
 }
 
 
@@ -222,9 +245,9 @@ async assignJobToRider(
     return this.vendorService.getAllRoles(body)
   }
 
-  @Post("get-by-id")
-  async getRoleById(body: { id: number }) {
-    return this.vendorService.getRoleById(body.id)
+  @Post("get-role-by-id")
+async getRoleById(@Body() body: { id: number }) {
+  return this.vendorService.getRoleById(body.id);
   }
 
 @Post('add-role')
@@ -243,29 +266,30 @@ async createRole(
 
 
 
-  @Post("update-role")
-  async updateRole(body: {
-    id: number
-    role_name?: string
-    description?: string
-    status?: boolean
-    updated_by: string
-  }) {
-    return this.vendorService.updateRole(body.id, body)
-  }
+@Post('update-role')
+async updateRole(@Body() body: {
+  id: number;
+  role_name?: string;
+  description?: string;
+  status?: boolean;
+  updated_by: string;
+  permissions?: { permission_id: number; access_level: PermissionLevel }[];
+}) {
+  return this.vendorService.updateRole(body.id, body);
+}
 
   @Post("delete-role")
 async deleteRole(@Body() body: { id: number }) {
     return this.vendorService.deleteRole(body.id)
   }
 
-@Post("assign-role-to-user")
-async assignRoleToUser(@Body() body: {
-  vendor_user_id: number
-  role_id: number
-}) {
-  return this.vendorService.assignRoleToUser(body)
-}
+// @Post("assign-role-to-user")
+// async assignRoleToUser(@Body() body: {
+//   vendor_user_id: number
+//   role_id: number
+// }) {
+//   return this.vendorService.assignRoleToUser(body)
+// }
 
 @Post('get-all-permissions')
 async getAllPermissions() {
@@ -278,7 +302,7 @@ async getAllPermissions() {
   @Post("user/get-role")
   async getUserRole(body: { vendor_user_id: number }) {
     return this.vendorService.getUserRole(body.vendor_user_id)
-  }
+      }
 
   @Post("user/remove-role")
   async removeRoleFromUser(body: { vendor_user_id: number }) {
@@ -294,4 +318,18 @@ async getAllPermissions() {
     return this.vendorService.getUsersByRole(body)
   }
 
+
+  @UseGuards(JwtAuthGuard)
+  @Post('get-company-users')
+  @HttpCode(200)
+  async getCompanyUsers(
+    @Body() body: { company_id: number },
+  ): Promise<Response> {
+    const { company_id } = body;
+    return this.vendorService.getCompanyUsers(company_id);
+  }
+
+
+
+ 
 }
