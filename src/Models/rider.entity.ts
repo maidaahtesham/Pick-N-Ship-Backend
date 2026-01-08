@@ -25,10 +25,13 @@ export class Rider {
   vehicle_type: string;
 
   @Column()
-  est_free_time: string;
+  vehicle_brand:string;
 
-  @Column('float')
-  distance: number;
+  @Column({nullable:true})
+  est_free_time?: string;
+
+  @Column({type:'float',nullable:true})
+  distance?: number;
 
 
   @Column()
@@ -37,14 +40,35 @@ export class Rider {
   @Column()
   email: string;
 
+
+  @Column()
+  password: string;
+
   @Column()
   licence_number: string;
+
+@Column({ name: 'driving_license_document_url' })
+driving_license_document_url: string;
+
+@Column({ name: 'vehicle_registration_document' })
+vehicle_registeration_document: string;
+
+@Column()
+registration_year: number;
 
   @Column()
   registration_number: string;
 
+ 
+
   @Column()
   registration_datetime: Date;
+
+  @Column()
+  emirates_id_front:string;
+
+  @Column()
+  emirates_id_back:string;
 
   @Column('text')
   documents: string;
@@ -61,6 +85,9 @@ export class Rider {
 
  @Column({default:'active', nullable:true})
   profile_status:string //blocked,active
+
+  @Column()
+  is_number_verified:boolean;
 
 @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })
 createdOn: Date;
@@ -96,8 +123,8 @@ codPayments: CodPayment[]; // Assuming a rider can have multiple cod payments
     @OneToMany(() => shipment_jobs, (job) => job.rider)
     shipmentJobs: shipment_jobs[];
 
-@OneToMany(() => qr_sessions, (qr_sessions) => qr_sessions.rider)
-qr_sessions: qr_sessions[];
+// @OneToMany(() => qr_sessions, (qr_sessions) => qr_sessions.rider)
+// qr_sessions: qr_sessions[];
 
 
 

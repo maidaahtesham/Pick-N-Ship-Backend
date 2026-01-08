@@ -1,4 +1,4 @@
-import { Body, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs'; // ✅
 
@@ -24,13 +24,26 @@ import { response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { MailerService } from '@nestjs-modules/mailer'; // This is correct
 import { ConfigService } from '@nestjs/config';
+import { ObjectCannedACL, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+ 
 
 @Injectable()
 export class AdminPortalService {
+
+   private s3Client = new S3Client({
+    region: process.env.AWS_REGION,
+      credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
+    },
+  });
   constructor(
         private readonly jwtService: JwtService,
         private readonly mailerService: MailerService,
         private readonly config: ConfigService,
+
+
+
 
 
 private dataSource: DataSource,
@@ -257,20 +270,27 @@ async getallCompaniesdetails(body: any): Promise<Response> {
   const resp = new Response();
 
   try {
-    // Map frontend sortBy to database column names
+    // ───────────────────────────────
+    // SORTING MAP
+    // ───────────────────────────────
     const sortByMap: { [key: string]: string } = {
-      registeration_date: 'company.registeration_date',
-      submission_date: 'company.registeration_date',
+      created_on: 'company.createdOn',
       company_name: 'company.company_name',
-      status: 'company.registeration_status',
-      
+      status: 'company.registeration_status'
     };
-    const mappedSortBy = sortByMap[sortBy] || 'company.registeration_date';
 
+    const mappedSortBy = sortByMap[sortBy] || 'company.createdOn';
+    const order = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    // ───────────────────────────────
+    // MAIN QUERY
+    // ───────────────────────────────
     const query = this.companyRepository
       .createQueryBuilder('company')
+      .distinctOn(['company.company_id'])                   // ← remove duplicates
       .leftJoin('company.ratings', 'rating')
-      .leftJoin('company.vendorUser', 'vendor') // join vendor_user table
+      .leftJoin('company.vendorUser', 'vendor')
+      .leftJoin('vendor.role', 'role')
       .select([
         'company.company_id AS company_id',
         'company.company_name AS company_name',
@@ -279,88 +299,91 @@ async getallCompaniesdetails(body: any): Promise<Response> {
         'company.registeration_date AS submission_date',
         'company.registeration_status AS status',
         'company.company_address AS address',
-        'company.createdOn AS created_on', 
-        'vendor.email_address AS vendor_email_address', // 👈 vendor email added
+        'company.createdOn AS created_on',
+        'vendor.email_address AS vendor_email_address'
       ])
       .addSelect('AVG(rating.stars)', 'average_rating')
+      .where('role.id = :roleId', { roleId: 1 })        // ← only company admin
       .groupBy('company.company_id')
-      .addGroupBy('vendor.email_address'); // 👈 include vendor field in groupBy
+      .addGroupBy('vendor.email_address')
+      .addGroupBy('vendor.id');
 
-    // Status filter
+    // ───────────────────────────────
+    // FILTERS
+    // ───────────────────────────────
     if (status && status !== 'All') {
       query.andWhere('company.registeration_status = :status', { status });
     }
 
-    // Search filter
     if (search) {
       query.andWhere(
         `(LOWER(company.company_name) LIKE LOWER(:search)
           OR LOWER(company.company_email_address) LIKE LOWER(:search)
           OR LOWER(vendor.email_address) LIKE LOWER(:search))`,
-        { search: `%${search}%` },
+        { search: `%${search}%` }
       );
     }
 
-    // Sorting
-    // Sorting
-if (sortBy) {
-  const sortByMap: { [key: string]: string } = {
-    created_on: 'company.createdOn',
-    company_name: 'company.company_name',
-    status: 'company.registeration_status',
-  };
+    // ───────────────────────────────
+    // ORDER BY (Postgres DISTINCT ON rule)
+    // MUST START WITH DISTINCT ON COLUMNS
+    // ───────────────────────────────
+    query
+      .orderBy('company.company_id', 'ASC')       // REQUIRED FIRST
+      .addOrderBy('vendor.id', 'ASC')             // consistent vendor pick
+      .addOrderBy(mappedSortBy, order);           // UI selected sort
 
-  const mappedSortBy = sortByMap[sortBy] || 'company.createdOn';
-
-  query.orderBy(mappedSortBy, sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC');
-} else {
-  // ✅ default: latest first
-  query.orderBy('company.createdOn', 'DESC');
-}
-
-    // Pagination
+    // ───────────────────────────────
+    // PAGINATION
+    // ───────────────────────────────
     query.skip((page - 1) * limit).take(limit);
 
-    // Execute query
     const companies = await query.getRawMany();
 
-    // Total count
-    const totalCountQuery = this.companyRepository.createQueryBuilder('company')
-      .leftJoin('company.vendorUser', 'vendor');
+    // ───────────────────────────────
+    // COUNT QUERY — no duplicates
+    // ───────────────────────────────
+    const totalCountQuery = this.companyRepository
+      .createQueryBuilder('company')
+      .leftJoin('company.vendorUser', 'vendor')
+      .leftJoin('vendor.role', 'role')
+      .where('role.id = :roleId', { roleId: 1 });
+
     if (status && status !== 'All') {
-      totalCountQuery.andWhere('company.registeration_status = :status', { status });
+      totalCountQuery.andWhere(
+        'company.registeration_status = :status',
+        { status }
+      );
     }
+
     if (search) {
       totalCountQuery.andWhere(
         `(LOWER(company.company_name) LIKE LOWER(:search)
           OR LOWER(company.company_email_address) LIKE LOWER(:search)
           OR LOWER(vendor.email_address) LIKE LOWER(:search))`,
-        { search: `%${search}%` },
+        { search: `%${search}%` }
       );
     }
+
     const totalCount = await totalCountQuery.getCount();
 
-    // Response
-    if (companies.length > 0) {
-      resp.success = true;
-      resp.httpResponseCode = 200;
-      resp.customResponseCode = '200 OK';
-      resp.message = 'Companies fetched successfully';
-      resp.result = companies;
-      resp.count = totalCount
-
- } else {
-      resp.message = 'No records exist';
-      resp.count = 0;
-    }
+    // ───────────────────────────────
+    // RESPONSE
+    // ───────────────────────────────
+    resp.success = true;
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    resp.message = 'Companies fetched successfully';
+    resp.result = companies;
+    resp.count = totalCount;
 
     return resp;
-  } catch (ex) {
+
+  } catch (error) {
     resp.success = false;
     resp.httpResponseCode = 400;
     resp.customResponseCode = '400 BadRequest';
-    resp.message = `Failed to Get Companies: ${ex.message}`;
-    resp.result = null;
+    resp.message = `Failed to get companies: ${error.message}`;
     return resp;
   }
 }
@@ -1672,4 +1695,43 @@ async requestPasswordReset(email: string): Promise<Response> {
       return resp;
     }
   }
+
+
+
+ async uploadFileToS3(file: Express.Multer.File): Promise<string> {
+    if (!file) throw new BadRequestException('No file provided');
+
+    const Key = `uploads/${Date.now()}-${file.originalname}`;
+
+    const params = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      ACL: 'public-read' as ObjectCannedACL,
+    };
+
+    await this.s3Client.send(new PutObjectCommand(params));
+
+    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${Key}`;
+  }
+
+  // Update super admin profile picture
+  async updateProfilePicture(adminId: number, url: string) {
+    await this.superAdminRepository.update(adminId, {
+      profile_picture_path: url,
+      updatedOn: new Date(),
+    });
+
+    return this.superAdminRepository.findOne({
+      where: { admin_id: adminId },
+    });
+  }
+
+
+
+
+
+
+
   }

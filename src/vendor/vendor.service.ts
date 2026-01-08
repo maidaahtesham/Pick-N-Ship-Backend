@@ -717,38 +717,73 @@ async getAllShipments({
 async getAllRiders(
   page: number = 1,
   limit: number = 10,
-  sortBy: string = 'id',
+  sortBy: string = 'rider_id',
   sortOrder: 'ASC' | 'DESC' = 'ASC',
   search: string = '',
   companyId: number,
-  status?:boolean,
+  status?: boolean,
 ) {
-  const query = this.riderRepository.createQueryBuilder('rider');
-   // Handle search functionality
-  if (search) {
-    query.where('LOWER(rider.rider_name) LIKE LOWER(:search)', { search: `%${search}%` })
-         .orWhere('LOWER(rider.email) LIKE LOWER(:search)', { search: `%${search}%` })
-         .orWhere('LOWER(rider.licence_number) LIKE LOWER(:search)', { search: `%${search}%` })
-         .orWhere('LOWER(rider.vehicle_type) LIKE LOWER(:search)', { search: `%${search}%` });
+  const query = this.riderRepository
+    .createQueryBuilder('rider')
+    .select([
+      'rider.id',
+      'rider.rider_tag_id',
+      'rider.rider_name',
+      'rider.phone_number',
+      'rider.vehicle_type',
+      'rider.vehicle_brand',
+      'rider.est_free_time',
+      'rider.distance',
+      'rider.rider_code',
+      'rider.email',
+       'rider.licence_number',
+      'rider.driving_license_document_url',
+      'rider.vehicle_registeration_document',
+      'rider.registration_year',
+      'rider.registration_number',
+      'rider.registration_datetime',
+      'rider.emirates_id_front',
+      'rider.emirates_id_back',
+      'rider.documents',
+      'rider.availability_status',
+      'rider.is_job_assigned',
+      'rider.is_available',
+      'rider.profile_status',
+      'rider.is_number_verified',
+      'rider.createdOn',
+      'rider.updatedOn',
+      'rider.createdBy',
+      'rider.updatedBy',
+      'rider.status',
+    ]);
+
+  if (companyId) {
+    query.where('rider.company_id = :companyId', { companyId });
   }
 
-  // Apply companyId filter
-  if (companyId ) {
-    query.andWhere('rider.company_id = :companyId', { companyId });
+  if (search) {
+    query.andWhere(
+      `(LOWER(rider.rider_name) LIKE LOWER(:search)
+        OR LOWER(rider.email) LIKE LOWER(:search)
+        OR LOWER(rider.licence_number) LIKE LOWER(:search)
+        OR LOWER(rider.vehicle_type) LIKE LOWER(:search))`,
+      { search: `%${search}%` }
+    );
   }
- if (status === true) {
-    query.andWhere('rider.is_active = :status', { status: true });
+
+  if (status === true) {
+    query.andWhere('rider.status = true');
   }
-  // Apply sorting
+
   query.orderBy(`rider.${sortBy}`, sortOrder);
 
-  // Apply pagination
   query.skip((page - 1) * limit).take(limit);
 
   const [data, total] = await query.getManyAndCount();
 
   return { data, total };
 }
+
 
 
 async getAllAvailableRiders(
@@ -1743,7 +1778,7 @@ async assignRiderToJob(
 
     // Assign rider to shipment
     shipment.rider = rider;
-    shipment.shipment_status = 'accepted';
+    shipment.shipment_status = 'assigned';
     shipment.pickup_time = pickup_time ? new Date(pickup_time) : new Date();
 
     rider.is_available = false;
@@ -2133,6 +2168,94 @@ async getCompanyUsers(company_id: number): Promise<Response> {
       return resp;
     }
   }
+
+ async updateProfileStatus(companyId: number, isProfileActive: boolean) {
+    const company = await this.courierCompanyRepository.findOne({
+      where: { company_id: companyId },
+    });
+
+    if (!company) {
+      throw new NotFoundException(`Company with ID ${companyId} not found`);
+    }
+
+    company.is_profile_active = isProfileActive;
+    company.updatedOn = new Date();
+
+    await this.courierCompanyRepository.save(company);
+
+    return {
+      success: true,
+      message: `Company profile has been ${
+        isProfileActive ? 'activated' : 'deactivated'
+      } successfully.`,
+      data: {
+        company_id: company.company_id,
+        is_profile_active: company.is_profile_active,
+      },
+    };
+  }
+
+
+
+
+
+async updatePassword(data: { vendor_id: number; newPassword: string }): Promise<Response> {
+  const resp = new Response();
+
+  try {
+    const { vendor_id, newPassword } = data;  
+    
+     if (typeof newPassword !== 'string' || newPassword.length === 0) {
+      resp.message = 'Invalid password provided';
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 BadRequest';
+      return resp;
+    }
+
+     const vendor = await this.vendorRepository.findOne({ where: { id: vendor_id } });
+    if (!vendor) {
+      resp.message = 'vendor found';
+      resp.httpResponseCode = 404;
+      resp.customResponseCode = '404 NotFound';
+      return resp;
+    }
+
+   
+    const hashedNewPassword = await this.hashPassword(newPassword);
+
+     vendor.password = hashedNewPassword;
+    vendor.updatedOn = new Date();
+    await this.vendorRepository.save(vendor);
+
+    resp.success = true;
+    resp.message = 'Password updated successfully';
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    resp.result = null;
+    return resp;
+  } catch (error: any) {
+    resp.success = false;
+    resp.message = `Failed to update password: ${error.message}`;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 BadRequest';
+    return resp;
+  }
+}
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
  }

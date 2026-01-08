@@ -26,6 +26,7 @@ import { RolePermission } from './Models/role-permission.entity';
 import { Permission } from './Models/permission.entity';
 import { admin_commission_settings } from './Models/admin_commission_settings.entity';
 import { qr_sessions } from './Models/qr_sessions.entity';
+import { shipping_payment } from './Models/shipping_payment.entity';
   
   
 config(); // load .env
@@ -63,7 +64,7 @@ RolePermission,
 Permission,
 admin_commission_settings,
 qr_sessions,
-
+shipping_payment
 
 
   ],

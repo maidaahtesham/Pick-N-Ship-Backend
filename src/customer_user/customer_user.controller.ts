@@ -223,5 +223,11 @@ async getAddressDetail(@Body() body: { address_id: number; customer_id: number }
   }
 
 
+@UseGuards(JwtAuthGuard)
+  @Post('update-password')
+  @HttpCode(200)
+  async updatePassword(@Body() data: { customer_id: number; newPassword: string }): Promise<any> {
+    return this.customerUserService.updatePassword(data);
+  }
 
 }

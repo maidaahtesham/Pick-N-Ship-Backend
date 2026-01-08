@@ -9,6 +9,8 @@ import { AuthController } from './auth/auth.controller';
 import { AdminPortalModule } from 'src/admin-portal/admin-portal.module';
 import { VendorModule } from 'src/vendor/vendor.module';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { RiderModule } from 'src/rider/rider.module';
+import { RiderService } from 'src/rider/rider.service';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
     AdminPortalModule,
     VendorModule,
     CustomerUserModule,
+    RiderModule,
+    
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -26,7 +30,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
         }
         return {
           secret,
-          signOptions: { expiresIn: '1h' },
+          signOptions: { expiresIn: '14d' },
         };
       },
       inject: [ConfigService],

@@ -5,10 +5,12 @@ import { AdminPortalService } from 'src/admin-portal/admin-portal.service';
 import { VendorService } from 'src/vendor/vendor.service';
 import { CustomerUserService } from 'src/customer_user/customer_user.service';
 import { VendorLoginDto } from 'src/ViewModel/vendor-login.dto';
+import { RiderLoginDto } from 'src/ViewModel/rider-login.dto';
+import { RiderService } from 'src/rider/rider.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService, private adminPortalService:AdminPortalService, private vendorService:VendorService, private customerService:CustomerUserService) {}
+  constructor(private authService: AuthService, private adminPortalService:AdminPortalService, private vendorService:VendorService, private customerService:CustomerUserService, private riderService:RiderService) {}
 
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
@@ -37,6 +39,20 @@ async vendorlogin(@Body() body: VendorLoginDto) {
     return this.authService.customerlogin(user);
   
   }
+
+@Post('rider-login')
+async riderlogin(@Body() body: RiderLoginDto) {
+  const user = await this.riderService.validateRiderUser(body.email, body.password);
+
+  // ❌ If login failed → return error response (DO NOT call authService)
+  if (user.success === false) {
+    return user;
+  }
+
+  // ✅ Valid login → call auth service
+  return this.authService.riderlogin(user.data);
+}
+
 
 
 

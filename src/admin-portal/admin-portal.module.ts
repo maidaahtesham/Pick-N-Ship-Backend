@@ -19,11 +19,12 @@ import { AuthModule } from 'src/auth/auth.module';
 import { MailerModule, MailerService } from '@nestjs-modules/mailer';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Role } from 'src/Models/role.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,shipping_detail, Rider,Rating,shipping_pricing,company_çonveyance_details,company_çonveyance_pricing_details, company_commission_rate,admin_commission_settings,ConfigModule]),
-    forwardRef(() => AuthModule), 
-    MailerModule.forRoot({
+    imports: [TypeOrmModule.forFeature([courier_company, super_admin, Shipment,CodPayment,shipping_detail, Rider,Rating,shipping_pricing,company_çonveyance_details,company_çonveyance_pricing_details, company_commission_rate,admin_commission_settings,ConfigModule,Role]),
+    // forwardRef(() => AuthModule), 
+     MailerModule.forRoot({
       transport: {
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT || 587,

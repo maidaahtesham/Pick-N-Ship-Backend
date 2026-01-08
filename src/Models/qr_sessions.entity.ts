@@ -22,9 +22,9 @@ export class qr_sessions {
   @Column({ type: 'varchar', length: 255, nullable: true })
   rider_name: string;
 
-@ManyToOne(() => Rider, (rider) => rider.qr_sessions, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'rider_id' })
-  rider: Rider;
+// @ManyToOne(() => Rider, (rider) => rider.qr_sessions, { onDelete: 'CASCADE' })
+//   @JoinColumn({ name: 'rider_id' })
+//   rider: Rider;
 
   @Column({ type: 'boolean', default: false })
   used: boolean;

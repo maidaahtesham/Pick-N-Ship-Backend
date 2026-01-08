@@ -552,6 +552,8 @@ async createFullShipmentUpdated(
       // ✅ Create shipment
       const shipment = queryRunner.manager.create(Shipment, {
         pickup_location: data.pickup_location,
+        pickup_lat: data.pickup_lat,
+        pickup_lng: data.pickup_lng,
         parcel_type: data.parcel_type,
         shipment_status: 'pending',
         payment_mode: 'prepaid',
@@ -575,6 +577,8 @@ async createFullShipmentUpdated(
         const parcel = queryRunner.manager.create(parcel_details, {
           shipments: savedShipment,
           dropoff_location: p.dropoff_location,
+          dropoff_lat:p.dropoff_lat,
+          dropoff_lng:p.dropoff_lng,
           description: p.description || '',
           sender_name: p.sender_name,
           sender_phone: p.sender_phone,
@@ -616,10 +620,14 @@ async createFullShipmentUpdated(
         shipment_id: savedShipment.id,
         tracking_number: savedShipment.tracking_number,
         pickup_location: savedShipment.pickup_location,
+        pickup_lat: savedShipment.pickup_lat,
+        pickup_lng: savedShipment.pickup_lng,
         parcel_type: savedShipment.parcel_type,
         parcels: savedParcels.map((parcel) => ({
           parcel_id: parcel.parcel_id,
           dropoff_location: parcel.dropoff_location,
+          dropoff_lat:parcel.dropoff_lat,
+          dropoff_lng:parcel.dropoff_lng,
           size: parcel.package_size,
           length: parcel.length,
           width: parcel.width,
@@ -824,6 +832,8 @@ async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
       .andWhere('conveyance.is_active = :active', { active: true })
       .andWhere('company.status = :status', { status: true })
       .andWhere('company.registeration_status=:registeration_status',{registeration_status:'Active'})
+      // .andWhere('(company.is_profile_active = TRUE)')
+
       .andWhere('pricing.is_active = :pricingActive', { pricingActive: true })
       .getMany();
 
@@ -853,12 +863,13 @@ async getCourierOptions(data: CreateFullShipmentDTO): Promise<Response> {
         .getRawOne();
       const avgRating = ratings.avgRating ? Number(ratings.avgRating).toFixed(1) : '0.0';
 
-      const estimatedDeliveryTime = '30 Mins';
+      const estimatedDeliveryTime = '30 Mins  ';
 
       return {
         company_id:company.company_id,
         logo: company.logo || '',
         name: company.company_name,
+        profile_active_status: company.is_profile_active,
         rating: Number(avgRating),
         estimated_delivery_time: estimatedDeliveryTime,
         price: `${total.toFixed(2)}`,
@@ -1743,5 +1754,62 @@ async getProfile(id: number, token?: string): Promise<Response> {
       throw new BadRequestException('Invalid or expired verification link.');
     }
   }
+
+
+
+async updatePassword(data: { customer_id: number; newPassword: string }): Promise<Response> {
+  const resp = new Response();
+
+  try {
+    const { customer_id, newPassword } = data; // Correctly destructure the single object
+    
+    // Check if newPassword is a valid string before proceeding
+    if (typeof newPassword !== 'string' || newPassword.length === 0) {
+      resp.message = 'Invalid password provided';
+      resp.httpResponseCode = 400;
+      resp.customResponseCode = '400 BadRequest';
+      return resp;
+    }
+
+    // 1. Find the admin by ID
+    const rider = await this.customerRepository.findOne({ where: { id: customer_id } });
+    if (!rider) {
+      resp.message = 'Customer found';
+      resp.httpResponseCode = 404;
+      resp.customResponseCode = '404 NotFound';
+      return resp;
+    }
+
+    // 2. Hash the new password
+    // Ensure that newPassword is not null or undefined here
+    const hashedNewPassword = await this.hashPassword(newPassword);
+
+    // 3. Update the password in the database
+    rider.password = hashedNewPassword;
+    rider.updatedOn = new Date();
+    await this.customerRepository.save(rider);
+
+    resp.success = true;
+    resp.message = 'Password updated successfully';
+    resp.httpResponseCode = 200;
+    resp.customResponseCode = '200 OK';
+    resp.result = null;
+    return resp;
+  } catch (error: any) {
+    resp.success = false;
+    resp.message = `Failed to update password: ${error.message}`;
+    resp.httpResponseCode = 400;
+    resp.customResponseCode = '400 BadRequest';
+    return resp;
+  }
+}
+ 
+
+
+
+
+
+
+
 
 }

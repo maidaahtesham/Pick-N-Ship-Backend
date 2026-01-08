@@ -329,6 +329,25 @@ async getAllPermissions() {
     return this.vendorService.getCompanyUsers(company_id);
   }
 
+  @Post('update-vendor-availability-status')
+  @HttpCode(200)
+  async updateProfileStatus(
+    @Body() body: { companyId: number; isProfileActive: boolean }
+  ) {
+    return this.vendorService.updateProfileStatus(body.companyId, body.isProfileActive);
+  }
+
+
+
+
+@UseGuards(JwtAuthGuard)
+  @Post('update-password')
+  @HttpCode(200)
+  async updatePassword(@Body() data: { vendor_id: number; newPassword: string }): Promise<any> {
+    return this.vendorService.updatePassword(data);
+  }
+
+
 
 
  

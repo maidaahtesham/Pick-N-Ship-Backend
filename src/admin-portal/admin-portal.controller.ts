@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards, Req, UseInterceptors, UploadedFile, Res, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, HttpCode, Query, NotFoundException, HttpStatus, UseGuards, Req, UseInterceptors, UploadedFile, Res, UsePipes, ValidationPipe, UploadedFiles, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { AdminPortalService } from './admin-portal.service';
 import { edit_courier_company_dto } from '../ViewModel/edit_courier_company.dto';
 import { Response } from '../ViewModel/response';
 import { super_admin } from '../Models/super_admin.entity';
 import { JwtAuthGuard } from 'src/auth/auth/jwt-auth.guard';
 import { admin_user } from 'src/ViewModel/admin-user.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 
 @Controller('api/admin-portal')
 export class AdminPortalController {
@@ -216,6 +216,48 @@ async resetPassword(
 ): Promise<Response> {
   return this.adminPortalService.resetPassword(body);
 }
+
+
+ @UseGuards(JwtAuthGuard)
+  @Post('upload-files')
+  @UseInterceptors(FilesInterceptor('files', 10))
+  async uploadFiles(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Req() req: any,
+  ) {
+
+    console.log('=== UPLOAD DEBUG ===');           // ← ADD THIS
+  console.log('req.user:', req.user);             // ← THIS WILL BE undefined!
+  console.log('req.headers.authorization:', req.headers.authorization);
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files uploaded');
+    }
+if (!req.user || !req.user.userId) {
+    throw new UnauthorizedException('User not authenticated - invalid/missing token');
+  }
+    const adminId = req.user.userId; // JWT user ID
+
+    // Upload all files
+    const urls = await Promise.all(
+      files.map((file) => this.adminPortalService.uploadFileToS3(file)),
+    );
+
+    // Update first one as profile picture
+    const updatedAdmin = await this.adminPortalService.updateProfilePicture(
+      adminId,
+      urls[0],
+    );
+
+    return {
+      success: true,
+      message: 'Files uploaded & profile updated',
+      urls,
+      updated_admin: updatedAdmin,
+    };
+  }
+
+
 
 
 }

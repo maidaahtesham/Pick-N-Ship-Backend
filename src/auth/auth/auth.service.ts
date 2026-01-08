@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
  
 import { AdminPortalService } from 'src/admin-portal/admin-portal.service';
 import { CustomerUserService } from 'src/customer_user/customer_user.service';
+import { RiderService } from 'src/rider/rider.service';
 import { VendorService } from 'src/vendor/vendor.service';
  
 @Injectable()
@@ -12,7 +13,8 @@ export class AuthService {
 private AdminPortalService:AdminPortalService,
 private VendorService:VendorService,
 private customerUserService:CustomerUserService,
-    private jwtService: JwtService
+    private jwtService: JwtService,
+    private riderService:RiderService
   ) {}
 
 
@@ -71,7 +73,7 @@ async vendorlogin(user: any) {
             city: user.company.city,
             company_address: user.company.company_address,
             company_email_address: user.company.company_email_address,
-            company_phone_number: user.company.company_phone_number,
+              company_phone_number: user.company.company_phone_number,
             pns_account_full_name: user.company.pns_account_full_name,
             registeration_date: user.company.registeration_date,
             registeration_status: user.company.registeration_status,
@@ -103,6 +105,14 @@ async vendorlogin(user: any) {
        customer_user,
     };
   }
-
-
-}
+async riderlogin(rider_user: any) {
+    const payload = { username: rider_user.email, sub:rider_user.id };
+    return {
+    success: true,
+    message: "Login successful",
+    data: {
+      access_token: this.jwtService.sign(payload),
+      ...rider_user,  // merge user data
+    }
+  }
+}}

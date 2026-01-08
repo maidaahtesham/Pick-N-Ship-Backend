@@ -75,6 +75,10 @@ acceptance_reason: string;
 @Column({ type: 'boolean', default: null })
 is_profile_complete: boolean;
 
+
+@Column({ type: 'boolean', nullable: true })
+is_profile_active: boolean;
+
   @OneToMany(() => Rating, (rating) => rating.company, { nullable: true })
     ratings: Rating[];
 

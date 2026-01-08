@@ -12,10 +12,10 @@ export class CreateQrSessionDto {
     companyName: string;
     riderName?: string;
     
-    @IsNotEmpty()
-    @Type(() => Number) // 💡 Explicitly force conversion from string to number
-    @IsNumber() 
-    readonly riderId: number; // Must be type number
+    // @IsNotEmpty()
+    // @Type(() => Number) // 💡 Explicitly force conversion from string to number
+    // @IsNumber() 
+    // readonly riderId: number; // Must be type number
 
     used?: boolean;
     createdBy?: string;

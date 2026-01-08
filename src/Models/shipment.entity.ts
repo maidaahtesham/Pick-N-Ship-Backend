@@ -10,6 +10,7 @@ import { shipment_jobs } from './shipment_jobs.entity';
 import { earning } from './earnings.entity';
 import { text } from 'stream/consumers';
 import { parcel_details } from './parcel_detail.entity';
+import { shipping_payment } from './shipping_payment.entity';
 
  
 @Entity()
@@ -23,9 +24,16 @@ export class Shipment {
  @Column({ type: 'varchar', length: 255, nullable: true })  
   pickup_location: string; 
 
+
+@Column({ type: 'varchar', length: 255, nullable: true })
+ pickup_lat:string;
+
+@Column({ type: 'varchar', length: 255, nullable: true })
+ pickup_lng:string;
+
     @Column({
     type: 'enum',
-    enum: ['pending', 'accepted', 'declined'],
+    enum: ['pending', 'accepted', 'declined', 'assigned','in_progress','completed'],
     default: 'pending',
   })
   shipment_status: string;
@@ -132,6 +140,9 @@ rider: Rider;
 
 @OneToOne(() => CodPayment, (codPayment) => codPayment.shipment, { cascade: true })
   cod_payment: CodPayment;
+  
+@OneToMany(() => shipping_payment, (payment) => payment.shipment)
+shipping_payment: shipping_payment[];
 
  
 

@@ -40,6 +40,9 @@ collectedOn: Date;
   is_paid_to_company: boolean;
 
   @Column({ type: 'boolean', default: false })
+  is_paid_to_courier: boolean;
+
+  @Column({ type: 'boolean', default: false })
   is_remitted_to_pns: boolean;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', nullable: false })

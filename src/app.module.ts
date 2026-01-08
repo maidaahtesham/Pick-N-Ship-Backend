@@ -38,6 +38,7 @@ import { UploadPictureModule } from './upload-pictures/upload_picture/upload-pic
 import * as sgTransport from 'nodemailer-sendgrid-transport';
 import { qr_sessions } from './Models/qr_sessions.entity';
 import { RiderModule } from './rider/rider.module';
+import { shipping_payment } from './Models/shipping_payment.entity';
 
 @Module({
   imports: [
@@ -105,6 +106,7 @@ import { RiderModule } from './rider/rider.module';
           PaymentTransaction,
           Role,
           qr_sessions,
+          shipping_payment
         ],
         migrations: ['dist/migrations/*.js'],
         migrationsRun: false,

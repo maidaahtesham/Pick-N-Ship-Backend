@@ -14,6 +14,14 @@ shipments: Shipment;
   @Column({ type: 'varchar', length: 255, nullable: true })
   dropoff_location: string;
 
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  dropoff_lat:string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  dropoff_lng:string;
+
+
 @Column({ type: 'text', nullable: true })
   description: string;
 

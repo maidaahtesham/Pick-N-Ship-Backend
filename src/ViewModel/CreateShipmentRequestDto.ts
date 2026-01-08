@@ -7,6 +7,14 @@ export class ParcelDetailDto {
 
   @IsOptional()
   @IsString()
+  dropoff_lat:string;
+
+  @IsOptional()
+  @IsString()
+  dropoff_lng:string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()
@@ -101,6 +109,18 @@ export class CreateFullShipmentDTO {
 
   @IsString()
   pickup_location: string;
+
+    @IsOptional()
+    @IsString()
+    pickup_lat:string;
+
+  @IsOptional()
+  @IsString()
+  pickup_lng:string;
+
+
+     
+  
 
   @IsEnum(['regular', 'bulk'])
   parcel_type: 'regular' | 'bulk';
